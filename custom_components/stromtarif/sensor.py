@@ -3,9 +3,10 @@ from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .entity import LedgerEntity
-from .model import totals, due, fee, finances
+from .model import totals, due, fee, finances, active
 
 SENSORS = [
+    ("status", "Tarifstatus", None),
     ("tariff_name", "Aktueller Tarif", None),
     ("period_cost", "Kosten Abrechnungsperiode", "EUR"),
     ("paid", "Bezahlte Abschläge", "EUR"),
@@ -47,6 +48,8 @@ class LedgerSensor(LedgerEntity, SensorEntity):
     @property
     def native_value(self):
         data = self.ledger.data
+        if self.key == "status":
+            return "aktiv" if active(data) else "inaktiv"
         if self.key == "tariff_name":
             return data["tariffs"][-1]["name"]
         if self.key in {"period_cost", "paid", "planned", "balance", "forecast_cost", "forecast_balance"}:
@@ -58,8 +61,12 @@ class LedgerSensor(LedgerEntity, SensorEntity):
             return float(data["tariffs"][-1][self.key])
         if self.key in {"last_reading", "next_reading"}:
             when = datetime.fromisoformat(data["readings"][-1]["date"]).date() if self.key == "last_reading" else due(data)
+            if self.key == "next_reading" and not active(data):
+                return None
             return datetime.combine(when, time(), tzinfo=dt_util.DEFAULT_TIME_ZONE)
         if self.key == "pending_fee":
+            if not active(data):
+                return 0
             return round(float(fee(data["tariffs"][-1]["monthly_fee"],
                                    datetime.fromisoformat(data["readings"][-1]["date"]).date(), dt_util.now().date())), 2)
         return round(totals(data)[self.key], 4 if self.key == "consumption" else 2)

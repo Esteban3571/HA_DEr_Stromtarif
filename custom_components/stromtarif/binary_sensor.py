@@ -2,12 +2,12 @@ from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .entity import LedgerEntity
-from .model import due
+from .model import due, active
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     ledger=hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([ReadingDue(ledger,"reading_due","Ablesung fällig"),SourceProblem(ledger,"source_problem","Zählersensor gestört")])
+    async_add_entities([ReadingDue(ledger,"reading_due","Ablesung fällig"),SourceProblem(ledger,"source_problem","Zählersensor gestört"),ReminderProblem(ledger,"reminder_problem","Erinnerungsziel gestört")])
 
 
 class ReadingDue(LedgerEntity, BinarySensorEntity):
@@ -15,7 +15,7 @@ class ReadingDue(LedgerEntity, BinarySensorEntity):
 
     @property
     def is_on(self):
-        return dt_util.now().date() >= due(self.ledger.data)
+        return active(self.ledger.data) and dt_util.now().date() >= due(self.ledger.data)
 
 
 class SourceProblem(LedgerEntity, BinarySensorEntity):
@@ -28,3 +28,13 @@ class SourceProblem(LedgerEntity, BinarySensorEntity):
     @property
     def extra_state_attributes(self):
         return {"fehler":self.ledger.source_error,"quelle":self.ledger.data.get("source")}
+
+
+class ReminderProblem(LedgerEntity, BinarySensorEntity):
+    @property
+    def is_on(self):
+        return bool(self.ledger.reminders.error)
+
+    @property
+    def extra_state_attributes(self):
+        return {"fehler": self.ledger.reminders.error, **self.ledger.data["reminders"]}

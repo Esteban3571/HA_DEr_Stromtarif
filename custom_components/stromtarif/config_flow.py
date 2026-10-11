@@ -7,7 +7,8 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .model import (initial, add_reading, change_tariff, undo_reading,
-                    configure_finances, add_payment, configure_source, source_value)
+                    configure_finances, add_payment, configure_source, source_value, close_tariff, edit_planned_payment, active)
+from .reminders import validate_targets
 
 
 def numeric(unit, default=0):
@@ -16,7 +17,30 @@ def numeric(unit, default=0):
         unit_of_measurement=unit))
 
 
-def tariff_schema(first=False):
+def reminder_fields(data=None):
+    data = data or {}
+    fields = {}
+    for domain, enum, features in (("calendar", "CalendarEntityFeature", ("CREATE_EVENT", "DELETE_EVENT")), ("todo", "TodoListEntityFeature", ("CREATE_TODO_ITEM", "DELETE_TODO_ITEM"))):
+        fields[vol.Optional(domain, description={"suggested_value": data.get(domain)})] = selector.EntitySelector(
+            selector.EntitySelectorConfig(filter={"domain": domain, "supported_features": [[f"{domain}.{enum}.{feature}" for feature in features]]}))
+    return fields
+
+
+
+def bill_fields():
+    return {vol.Required("final_bill", default=False): selector.BooleanSelector(),
+        vol.Optional("bill_start"): selector.DateSelector(),
+        vol.Optional("invoice_total"): numeric("EUR"),
+        vol.Optional("invoice_balance"): numeric("EUR"),
+        vol.Required("balance_kind", default="payment"): selector.SelectSelector(selector.SelectSelectorConfig(options=[{"value":"payment", "label":"Nachzahlung"}, {"value":"refund", "label":"Guthaben"}]))}
+
+
+def validate_bill(values):
+    if values.get("final_bill") and any(values.get(key) is None for key in ("bill_start", "invoice_total", "invoice_balance")):
+        raise ValueError("bill_required")
+
+
+def tariff_schema(first=False, reminders=None):
     fields = {
         vol.Required("name"): selector.TextSelector(),
         vol.Required("date", default=dt_util.now().date().isoformat()): selector.DateSelector(),
@@ -27,6 +51,9 @@ def tariff_schema(first=False):
     if first:
         fields[vol.Required("interval", default=90)] = selector.NumberSelector(
             selector.NumberSelectorConfig(min=1, max=730, step=1, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="Tage"))
+    fields.update(reminder_fields(reminders))
+    if not first:
+        fields.update(bill_fields())
     return vol.Schema(fields)
 
 
@@ -37,6 +64,7 @@ class StromtarifConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             try:
+                validate_targets(self.hass, user_input)
                 initial(user_input, dt_util.now().date())
             except ValueError as err:
                 errors["base"] = str(err) if str(err) in ERRORS else "invalid_input"
@@ -50,7 +78,7 @@ class StromtarifConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return StromtarifOptionsFlow()
 
 
-ERRORS = {"future_date", "date_order", "reading_decreased", "boundary_mismatch", "invalid_number", "cannot_undo", "billing_dates", "invalid_source", "source_reset", "source_behind"}
+ERRORS = {"future_date", "date_order", "reading_decreased", "boundary_mismatch", "invalid_number", "cannot_undo", "billing_dates", "invalid_source", "source_reset", "source_behind", "invalid_reminder_target", "bill_required", "duplicate_payment_date"}
 
 
 class StromtarifOptionsFlow(config_entries.OptionsFlow):
@@ -59,12 +87,13 @@ class StromtarifOptionsFlow(config_entries.OptionsFlow):
         return self.hass.data[DOMAIN][self.config_entry.entry_id]
 
     async def async_step_init(self, user_input=None):
-        return self.async_show_menu(step_id="init", menu_options=["reading", "tariff", "interval", "undo", "finances", "payment", "undo_payment", "source"])
+        return self.async_show_menu(step_id="init", menu_options=["reading", "tariff", "interval", "undo", "finances", "payment", "undo_payment", "source", "reminders", "status", "close", "planned_payment"])
 
     async def commit(self, operation, step, schema, user_input):
         errors = {}
         if user_input is not None:
             try:
+                validate_bill(user_input)
                 await self.ledger.mutate(operation)
             except ValueError as err:
                 errors["base"] = str(err) if str(err) in ERRORS else "invalid_input"
@@ -78,7 +107,10 @@ class StromtarifOptionsFlow(config_entries.OptionsFlow):
         return await self.commit(lambda data: add_reading(data, user_input["reading"], user_input["date"], dt_util.now().date()), "reading", schema, user_input)
 
     async def async_step_tariff(self, user_input=None):
-        return await self.commit(lambda data: change_tariff(data, user_input, dt_util.now().date()), "tariff", tariff_schema(), user_input)
+        def update(data):
+            validate_targets(self.hass, user_input)
+            change_tariff(data, user_input, dt_util.now().date())
+        return await self.commit(update, "tariff", tariff_schema(reminders=self.ledger.data["reminders"]), user_input)
 
     async def async_step_interval(self, user_input=None):
         schema = vol.Schema({vol.Required("interval", default=self.ledger.data["interval"]): selector.NumberSelector(
@@ -100,8 +132,12 @@ class StromtarifOptionsFlow(config_entries.OptionsFlow):
             vol.Required("billing_start",default=data["billing_start"]):selector.DateSelector(),
             vol.Required("billing_end",default=data["billing_end"]):selector.DateSelector(),
             vol.Required("monthly_installment",default=float(data["monthly_installment"])):numeric("EUR/Monat"),
-            vol.Required("payment_day",default=data["payment_day"]):selector.NumberSelector(selector.NumberSelectorConfig(min=1,max=28,step=1,mode=selector.NumberSelectorMode.BOX))})
-        return await self.commit(lambda data:configure_finances(data,user_input["billing_start"],user_input["billing_end"],user_input["monthly_installment"],user_input["payment_day"]),"finances",schema,user_input)
+            vol.Required("payment_day",default=data["payment_day"]):selector.NumberSelector(selector.NumberSelectorConfig(min=0,max=31,step=1,mode=selector.NumberSelectorMode.BOX)),
+            vol.Required("schedule_mode", default=data["schedule_mode"]): selector.SelectSelector(selector.SelectSelectorConfig(options=[{"value":"monthly", "label":"Monatlich"}, {"value":"custom", "label":"Nur einzelne Termine"}]))})
+        def update(data):
+            configure_finances(data,user_input["billing_start"],user_input["billing_end"],user_input["monthly_installment"],user_input["payment_day"])
+            data["schedule_mode"] = user_input.get("schedule_mode", "monthly")
+        return await self.commit(update,"finances",schema,user_input)
 
     async def async_step_payment(self,user_input=None):
         schema=vol.Schema({vol.Required("date",default=dt_util.now().date().isoformat()):selector.DateSelector(),vol.Required("amount"):numeric("EUR")})
@@ -135,3 +171,37 @@ class StromtarifOptionsFlow(config_entries.OptionsFlow):
                 self.ledger.bind_source()
                 return self.async_create_entry(title="",data={})
         return self.async_show_form(step_id="source",data_schema=schema,errors=errors)
+
+
+    async def async_step_reminders(self, user_input=None):
+        data = self.ledger.data["reminders"]
+        fields = reminder_fields(data)
+        fields.update({vol.Required("readings", default=data["readings"]): selector.BooleanSelector(),
+            vol.Required("payments", default=data["payments"]): selector.BooleanSelector()})
+        def update(ledger):
+            validate_targets(self.hass, user_input)
+            ledger["reminders"] = {key: user_input.get(key) or None for key in ("calendar", "todo")}
+            ledger["reminders"].update(readings=user_input["readings"], payments=user_input["payments"])
+        return await self.commit(update, "reminders", vol.Schema(fields), user_input)
+
+    async def async_step_status(self, user_input=None):
+        def update(data):
+            if user_input["confirm"]:
+                data["tariffs"][-1].update(active=False)
+                data["tariffs"][-1].setdefault("end", data["readings"][-1]["date"])
+                data["tariffs"][-1].setdefault("end_reading", data["readings"][-1]["value"])
+                data["notified_due"] = None
+        return await self.commit(update, "status", vol.Schema({vol.Required("confirm", default=False): selector.BooleanSelector()}), user_input)
+
+    async def async_step_close(self, user_input=None):
+        fields = {vol.Required("date", default=dt_util.now().date().isoformat()): selector.DateSelector(),
+            vol.Required("reading", default=float(self.ledger.data["readings"][-1]["value"])): numeric("kWh")}
+        fields.update(bill_fields())
+        return await self.commit(lambda data: close_tariff(data, user_input, dt_util.now().date()), "close", vol.Schema(fields), user_input)
+
+    async def async_step_planned_payment(self, user_input=None):
+        fields = {vol.Required("key", default=dt_util.now().date().isoformat()): selector.DateSelector(),
+            vol.Required("date", default=dt_util.now().date().isoformat()): selector.DateSelector(),
+            vol.Required("amount", default=float(self.ledger.data["monthly_installment"])): numeric("EUR"),
+            vol.Required("remove", default=False): selector.BooleanSelector()}
+        return await self.commit(lambda data: edit_planned_payment(data, user_input["key"], user_input["date"], user_input["amount"], user_input["remove"]), "planned_payment", vol.Schema(fields), user_input)

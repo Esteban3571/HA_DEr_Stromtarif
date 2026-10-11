@@ -24,3 +24,25 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node --check custom_components/stromtarif/www/stromtarif-card.js
       - run: node tests/test_card.cjs
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [homeassistant, dashboard]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: stromtarif-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish tested version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(python -c "import json,re; v=json.load(open('custom_components/stromtarif/manifest.json'))['version']; assert re.fullmatch(r'[0-9]+[.][0-9]+[.][0-9]+',v); print(v)")
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "Release v${VERSION} already exists."
+          else
+            gh release create "v${VERSION}" --target "$GITHUB_SHA" --title "DEr Stromtarif ${VERSION}" --notes-file RELEASE_NOTES.md --latest
+          fi

@@ -11,7 +11,9 @@
           "reading": "Zählerstand (kWh)",
           "price": "Arbeitspreis (EUR/kWh)",
           "monthly_fee": "Grundgebühr (EUR/Monat)",
-          "interval": "Ableseintervall (Tage)"
+          "interval": "Ableseintervall (Tage)",
+          "calendar": "Kalender für ganztägige Termine (optional)",
+          "todo": "To-do-Liste für Ableseaufgaben (optional)"
         }
       }
     },
@@ -22,7 +24,11 @@
       "boundary_mismatch": "Beim Tarifwechsel am letzten Ablesedatum muss der Zählerstand identisch sein.",
       "invalid_number": "Bitte eine endliche, nicht negative Zahl eingeben.",
       "cannot_undo": "Diese Ablesung ist ein Tarifstart oder die erste Ablesung und kann nicht entfernt werden.",
-      "invalid_input": "Bitte die Eingaben prüfen."
+      "invalid_input": "Bitte die Eingaben prüfen.",
+      "invalid_reminder_target": "Bitte einen verfügbaren Kalender bzw. eine To-do-Liste wählen, die Einträge erstellen und löschen kann.",
+      "bill_required": "Für eine Endabrechnung Rechnungsbeginn, Gesamtbetrag und Saldo eingeben.",
+      "duplicate_payment_date": "An diesem Datum ist bereits ein geplanter Abschlag vorhanden.",
+      "billing_dates": "Beginn darf nicht vor dem Tarifbuch liegen; Ende muss danach liegen. Einzeltermine müssen in der Periode liegen."
     }
   },
   "options": {
@@ -37,7 +43,11 @@
           "finances": "Abrechnung und Abschlag",
           "payment": "Zahlung erfassen",
           "undo_payment": "Letzte Zahlung entfernen",
-          "source": "Automatischen Zählersensor wählen"
+          "source": "Automatischen Zählersensor wählen",
+          "reminders": "Kalender und To-do-Liste ändern",
+          "status": "Aktuellen Tarif inaktiv setzen",
+          "close": "Tarif abschließen",
+          "planned_payment": "Einzelnen Abschlag planen, verschieben oder entfernen"
         }
       },
       "reading": {
@@ -56,7 +66,14 @@
           "date": "Datum",
           "reading": "Zählerstand (kWh)",
           "price": "Arbeitspreis (EUR/kWh)",
-          "monthly_fee": "Grundgebühr (EUR/Monat)"
+          "monthly_fee": "Grundgebühr (EUR/Monat)",
+          "calendar": "Kalender für ganztägige Termine (optional)",
+          "todo": "To-do-Liste für Ableseaufgaben (optional)",
+          "final_bill": "Endabrechnung erfassen",
+          "bill_start": "Beginn des Rechnungszeitraums",
+          "invoice_total": "Rechnungsbetrag gesamt (EUR)",
+          "invoice_balance": "Ausgewiesene Nachzahlung / Guthaben (EUR)",
+          "balance_kind": "Art des Abrechnungssaldos"
         }
       },
       "interval": {
@@ -75,12 +92,13 @@
       },
       "finances": {
         "title": "Abrechnung und Abschlag",
-        "description": "Beginn muss einem vorhandenen Ablesedatum entsprechen. Ende ist exklusiv. Zahlungen am gewählten Monatstag sind geplant, nicht als bezahlt gebucht.",
+        "description": "Unabhängig von Ablesedaten. Ende ist exklusiv. Monatstag 0 bedeutet Monatsende; fehlende Tage 29–31 fallen auf den letzten Monatstag. Einzeltermine unter „Einzelnen Abschlag planen“ verwalten. Geplante Abschläge sind keine gebuchten Zahlungen.",
         "data": {
           "billing_start": "Beginn der Abrechnungsperiode",
           "billing_end": "Ende der Abrechnungsperiode",
           "monthly_installment": "Monatlicher Abschlag (EUR)",
-          "payment_day": "Zahlungstag im Monat (1–28)"
+          "payment_day": "Zahlungstag (1–31; 0 = Monatsende)",
+          "schedule_mode": "Zahlungsplan"
         }
       },
       "payment": {
@@ -105,6 +123,46 @@
           "enabled": "Automatische Übernahme aktivieren",
           "entity_id": "Kumulativer Zählersensor"
         }
+      },
+      "reminders": {
+        "title": "Kalender und To-do-Liste ändern",
+        "description": "Felder leeren, um das Ziel zu deaktivieren. Kalender und To-do-Liste müssen das Erstellen und Löschen erlauben. Ableseaufgaben werden in der To-do-Liste angelegt; Abschläge ausschließlich als Kalendertermine.",
+        "data": {
+          "calendar": "Kalender für ganztägige Termine (optional)",
+          "todo": "To-do-Liste für Ableseaufgaben (optional)",
+          "readings": "Ablesetermine und Aufgaben erstellen",
+          "payments": "Abschlagstermine im Kalender erstellen"
+        }
+      },
+      "status": {
+        "title": "Aktuellen Tarif inaktiv setzen",
+        "description": "Beendet Erinnerungen und automatische Ablesungen ohne Rechnung. Die Erfassung endet bei der letzten Ablesung. Für einen genauen Abschluss mit Endzählerstand „Tarif abschließen“ verwenden. Für einen neuen aktiven Vertrag „Neuen Tarif hinterlegen“ wählen.",
+        "data": {
+          "confirm": "Aktuellen Tarif inaktiv setzen"
+        }
+      },
+      "close": {
+        "title": "Tarif abschließen",
+        "description": "Enddatum ist exklusiv: erster Tag ohne diesen Tarif. Endzählerstand und optional die Endabrechnung erfassen. Zahlungen bleiben getrennt; der Rechnungsbetrag wird nicht als zusätzliche Zahlung gebucht.",
+        "data": {
+          "date": "Enddatum (exklusiv)",
+          "reading": "Endzählerstand (kWh)",
+          "final_bill": "Endabrechnung erfassen",
+          "bill_start": "Beginn des Rechnungszeitraums",
+          "invoice_total": "Rechnungsbetrag gesamt (EUR)",
+          "invoice_balance": "Ausgewiesene Nachzahlung / Guthaben (EUR)",
+          "balance_kind": "Art des Abrechnungssaldos"
+        }
+      },
+      "planned_payment": {
+        "title": "Einzelnen Abschlag planen, verschieben oder entfernen",
+        "description": "Für neue Termine ursprüngliches Datum und neues Datum gleich eingeben. Zum Verschieben das ursprüngliche Datum auswählen. „Entfernen“ speichert eine dauerhafte Ausnahme. Der Zahlungsplan ist unabhängig von Ablesungen.",
+        "data": {
+          "key": "Ursprüngliches Datum / Kennung des Termins",
+          "date": "Gewünschtes Zahlungsdatum",
+          "amount": "Geplanter Betrag (EUR)",
+          "remove": "Diesen geplanten Termin entfernen"
+        }
       }
     },
     "error": {
@@ -115,10 +173,13 @@
       "invalid_number": "Bitte eine endliche, nicht negative Zahl eingeben.",
       "cannot_undo": "Diese Ablesung ist ein Tarifstart oder die erste Ablesung und kann nicht entfernt werden.",
       "invalid_input": "Bitte die Eingaben prüfen.",
-      "billing_dates": "Beginn muss ein Ablesedatum sein und Ende muss danach liegen.",
+      "billing_dates": "Beginn darf nicht vor dem Tarifbuch liegen; Ende muss danach liegen. Einzeltermine müssen in der Periode liegen.",
       "invalid_source": "Bitte einen verfügbaren kumulativen Energiesensor in Wh/kWh mit state_class total oder total_increasing wählen.",
       "source_reset": "Zählersensor zurückgesetzt. Aktuellen Stand manuell erfassen und Sensor erneut kalibrieren.",
-      "source_behind": "Sensor liegt hinter dem manuell erfassten Stand. Aktuelle Ablesung prüfen und Sensor erneut kalibrieren."
+      "source_behind": "Sensor liegt hinter dem manuell erfassten Stand. Aktuelle Ablesung prüfen und Sensor erneut kalibrieren.",
+      "invalid_reminder_target": "Bitte einen verfügbaren Kalender bzw. eine To-do-Liste wählen, die Einträge erstellen und löschen kann.",
+      "bill_required": "Für eine Endabrechnung Rechnungsbeginn, Gesamtbetrag und Saldo eingeben.",
+      "duplicate_payment_date": "An diesem Datum ist bereits ein geplanter Abschlag vorhanden."
     }
   }
 }

@@ -1,5 +1,17 @@
 # Änderungen
 
+## 0.3.0
+
+- Kalender und To-do-Ziele bei Einrichtung, Tarifwechsel und nachträglich wählen.
+- Ganztägige Ablese- und Abschlagstermine sowie Ableseaufgaben ohne Neustart-Duplikate.
+- Unabhängiger Zahlungsplan: Tag 1–31, Monatsende, individuelle Beträge und dauerhafte Ausnahmen.
+- Tarifstatus inaktiv, Endzählerstand und separate Lieferanten-Endabrechnung; neuer Tarif bleibt aktiv.
+- Vertragsfreie Zeit nicht dem abgeschlossenen Tarif zurechnen.
+- Status, Endabrechnungen und Terminplan in Karte und CSV; Störungsanzeige für Erinnerungsziele.
+- Datenmigration ohne Verlust vorhandener Tarif-, Ablese- und Zahlungshistorie.
+- Benannte GitHub-Releases nach erfolgreichen CI-Prüfungen mit lesbaren deutschen Versionshinweisen.
+- Regressionstests für Monatsende, Schaltjahr, unabhängige Termine, Abschluss, Zielwechsel und echte HA-Kalender/-Aufgaben.
+
 ## 0.2.0
 
 - Einrichtungsfehler durch ungültige Schrittweite des Zahlen-Selektors behoben.

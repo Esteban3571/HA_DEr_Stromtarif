@@ -52,7 +52,8 @@ class FeaturesTests(unittest.TestCase):
   l=self.ledger();l['tariffs'][0]['name']='=HYPERLINK("bad")';m.add_payment(l,90,'2026-01-01',TODAY)
   text=m.csv_export(l)
   self.assertIn("'=HYPERLINK",text);self.assertIn('Zahlung;2026-01-01',text)
- def test_bad_billing_start(self):
-  with self.assertRaises(ValueError):m.configure_finances(self.ledger(),'2026-02-01','2027-01-01',90,1)
+ def test_independent_billing_start(self):
+  l=self.ledger();m.configure_finances(l,'2026-02-01','2027-01-01',90,31)
+  self.assertEqual(l['billing_start'],'2026-02-01')
  def test_leap_billing_start(self):
   l=m.migrate(m.initial(data(date='2024-02-29'),TODAY));self.assertEqual(l['billing_end'],'2025-02-28')

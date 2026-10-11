@@ -1,6 +1,6 @@
 # DEr Stromtarif für Home Assistant
 
-Version 0.2.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
+Version 0.3.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
 
 Verwaltet feste Stromtarife, manuelle Zählerstände, Tarifwechsel und Ableseerinnerungen. Alle Daten bleiben in Home Assistant. Mehrere Zähler können als separate Integrationseinträge angelegt werden.
 
@@ -74,7 +74,7 @@ Die ungültige Zahlenfeld-Schrittweite, die den Einrichtungsdialog verhindern ko
 
 ### Abschläge, Abrechnung und Prognose
 
-Unter **Konfigurieren → Abrechnung und Abschlag** Beginn, exklusives Enddatum, monatlichen Abschlag und Zahlungstag wählen. Der Beginn muss einem vorhandenen Ablesedatum entsprechen. Standard ist das erste Ablesedatum bis zum gleichen Datum im Folgejahr.
+Unter **Konfigurieren → Abrechnung und Abschlag** Beginn, exklusives Enddatum, monatlichen Abschlag und Zahlungstag wählen. Der Beginn kann unabhängig von Ablesedaten gewählt werden; er darf nicht vor dem ersten Eintrag des Tarifbuchs liegen. Standard ist das erste Ablesedatum bis zum gleichen Datum im Folgejahr.
 
 **Zahlung erfassen** bucht tatsächlich bezahlte Beträge; der monatliche Plan bucht keine Zahlungen automatisch. **Letzte Zahlung entfernen** korrigiert die zuletzt eingegebene Zahlung. Alle Zahlungen bleiben in der Historie. Im Zeitraum werden nur Zahlungen mit Datum ab Beginn und vor Ende gezählt.
 
@@ -82,7 +82,7 @@ Sensoren zeigen Periodenkosten, bezahlte und geplante Abschläge, bisherigen Sal
 
 ### Dashboard-Karte und CSV
 
-1. In den Dashboard-Einstellungen unter **Ressourcen** `/stromtarif-card.js?v=0.2.0` als **JavaScript-Modul** hinzufügen (gegebenenfalls erweiterten Modus im Benutzerprofil aktivieren).
+1. In den Dashboard-Einstellungen unter **Ressourcen** `/stromtarif-card.js?v=0.3.0` als **JavaScript-Modul** hinzufügen (gegebenenfalls erweiterten Modus im Benutzerprofil aktivieren).
 2. Eine manuelle Karte hinzufügen:
 
 ```yaml
@@ -106,3 +106,34 @@ Bei `unknown`, `unavailable`, sinkendem Rohwert oder einer Abweichung hinter den
 Änderungen entstehen zuerst in einer separaten lokalen Testkopie. Erst nach bestandenen Prüfungen werden sie auf den Hauptzweig übertragen. Tests der HA-Oberfläche und Laufzeit stehen in `tests/test_runtime.py`; reine Berechnungen in `tests/test_model.py` und `tests/test_features.py`.
 
 Testdetails: [TEST_REPORT.md](TEST_REPORT.md). Versionshistorie: [CHANGELOG.md](CHANGELOG.md).
+
+
+## Neu in 0.3.0
+
+### Kalender und Aufgaben
+
+Beim Einrichten oder Tarifwechsel optional einen bestehenden HA-Kalender und eine To-do-Liste auswählen. Unter **Konfigurieren → Kalender und To-do-Liste ändern** lassen sich die Ziele später wechseln oder durch Leeren der Felder deaktivieren. Es werden nur Ziele angeboten, die Einträge **erstellen und löschen** können, zum Beispiel Local Calendar und Local To-do. Einen Kalender bei Bedarf zuerst in Home Assistant anlegen.
+
+Der Kalender erhält die nächste Ablesung und geplante Abschläge als **ganztägige Termine** mit exklusivem Enddatum am Folgetag. Ablesungen und Abschläge sind einzeln zuschaltbar. In der To-do-Liste entsteht eine Ableseaufgabe, bei entsprechender Unterstützung mit Fälligkeitsdatum. Erledigte Aufgaben bleiben erledigt; die nächste Ablesung erzeugt eine neue Aufgabe. Termine buchen keine Zahlungen.
+
+Die Integration markiert eigene Einträge und gleicht sie nach Änderungen, beim Start und stündlich ab. Neustarts erzeugen keine Duplikate. Bei Zielwechsel werden eigene offene Aufgaben und zukünftige Termine am alten Ziel entfernt; vergangene Abschlagstermine bleiben als Historie erhalten. Fremde Einträge bleiben bestehen. Ein nicht verfügbares Ziel zeigt **Erinnerungsziel gestört** und den Fehler in der Karte; das Tarifbuch bleibt bedienbar. Der Abgleich wird automatisch erneut versucht.
+
+### Flexible Abschläge
+
+Unter **Abrechnung und Abschlag** Monatstag **1–31** wählen; **0 = Monatsende**. Existiert ein Tag nicht, fällt er auf den letzten Tag des Monats, einschließlich 29. Februar in Schaltjahren. Es erfolgt keine automatische Verschiebung wegen Wochenenden oder Feiertagen.
+
+Unter **Einzelnen Abschlag planen, verschieben oder entfernen** eigene Termine und Beträge erfassen. Zum Verschieben dient das ursprüngliche Datum als Kennung; zum Entfernen den entsprechenden Schalter aktivieren. Diese Ausnahmen bleiben bei Änderungen des monatlichen Plans bestehen. Für einen vollständig individuellen Plan den Modus **Nur einzelne Termine** auswählen. Die Karte zeigt Termin, Betrag und ursprüngliches Datum. Pro Datum wird nur ein geplanter Abschlag berücksichtigt; Ausnahmen haben Vorrang vor einer später auf dasselbe Datum fallenden monatlichen Zahlung.
+
+Zahlungsplan und Ableseintervall sind unabhängig. Eine Ablesung verschiebt keine Zahlung. Abrechnungsbeginn benötigt keine Ablesung am selben Tag; zeitanteilige Verbrauchsgrenzen werden als Schätzung gekennzeichnet. Kalender und Prognose verwenden denselben Zahlungsplan. Bezahlte Abschläge weiterhin separat unter **Zahlung erfassen** buchen.
+
+### Inaktive Tarife und Endabrechnung
+
+**Aktuellen Tarif inaktiv setzen** beendet Erinnerungen und automatische Ablesungen ohne Rechnung; die letzte erfasste Ablesung ist die Abschlussgrenze. Für einen genauen Abschluss **Tarif abschließen** mit Enddatum und Endzählerstand verwenden. Enddatum bedeutet erster Tag ohne diesen Vertrag (exklusiv).
+
+Optional eine **Endabrechnung** mit Rechnungsbeginn, tatsächlichem Rechnungsbetrag und ausgewiesener Nachzahlung oder Guthaben erfassen. Diese Lieferantenrechnung bleibt getrennt von den berechneten Kosten und bestätigten Zahlungen und ist in Karte und CSV sichtbar. Der Rechnungsbetrag wird nicht erneut als Zahlung gebucht. Beim Tarifwechsel kann die Rechnung des alten Tarifs direkt erfasst werden; der alte Tarif wird inaktiv und der neue aktiv. Zeit zwischen einem abgeschlossenen Vertrag und einem späteren Tarifstart wird nicht dem alten Tarif berechnet. Bestehende Daten werden automatisch ergänzt, historische Tarife als inaktiv markiert.
+
+### Lesbare Updates
+
+Versionen werden als benannte GitHub-Releases mit Semver-Tag und kurzen deutschen Versionshinweisen veröffentlicht. Der Release-Workflow startet nach einem Push auf `main` und veröffentlicht erst nach erfolgreichen Modell-, HA-Laufzeit- und Kartentests. Er überschreibt kein bestehendes Release.
+
+Falls HACS bisher `main` oder eine kurze Commit-ID anzeigt: Repository öffnen → Menü → **Erneut herunterladen**, Version **v0.3.0** auswählen, herunterladen und Home Assistant neu starten. Je nach HACS-Version kann die Menübezeichnung abweichen. Für die Dashboard-Karte die Ressource auf `/stromtarif-card.js?v=0.3.0` ändern und Browser aktualisieren. HACS-Installation und Darstellung in deiner eigenen Instanz wurden hier nicht getestet.

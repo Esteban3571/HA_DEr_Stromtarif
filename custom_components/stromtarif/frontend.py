@@ -6,7 +6,7 @@ from homeassistant.components import websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import callback
 from .const import DOMAIN
-from .model import finances, totals, csv_export, due, intervals
+from .model import finances, totals, csv_export, due, intervals, active, payment_schedule
 
 
 @websocket_api.websocket_command({vol.Required("type"):"stromtarif/list"})
@@ -24,7 +24,7 @@ def ws_history(hass, connection, msg):
     if ledger is None or msg["entry_id"]=="frontend_ready":
         connection.send_error(msg["id"],"not_found","Tarifbuch nicht geladen")
         return
-    connection.send_result(msg["id"],{"title":ledger.entry.title,"ledger":deepcopy(ledger.data),"intervals":intervals(ledger.data),"totals":totals(ledger.data),"finances":finances(ledger.data),"due":due(ledger.data).isoformat(),"source_error":ledger.source_error})
+    connection.send_result(msg["id"],{"title":ledger.entry.title,"ledger":deepcopy(ledger.data),"intervals":intervals(ledger.data),"totals":totals(ledger.data),"finances":finances(ledger.data),"due":due(ledger.data).isoformat() if active(ledger.data) else None,"schedule":payment_schedule(ledger.data),"reminder_error":ledger.reminders.error,"source_error":ledger.source_error})
 
 
 @websocket_api.websocket_command({vol.Required("type"):"stromtarif/export",vol.Required("entry_id"):str})

@@ -1,7 +1,7 @@
 {
   "domain": "stromtarif",
   "name": "DEr Stromtarif",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "codeowners": [
     "@Esteban3571"
   ],
@@ -15,5 +15,9 @@
   "issue_tracker": "https://github.com/Esteban3571/HA_DEr_Stromtarif/issues",
   "iot_class": "local_push",
   "integration_type": "service",
-  "requirements": []
+  "requirements": [],
+  "after_dependencies": [
+    "calendar",
+    "todo"
+  ]
 }

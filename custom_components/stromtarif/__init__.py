@@ -10,7 +10,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLATFORMS
-from .model import initial, due, migrate, source_value, ingest_source
+from .model import initial, due, migrate, source_value, ingest_source, active
 
 
 class Ledger:
@@ -21,6 +21,8 @@ class Ledger:
         self.data = None
         self.lock = asyncio.Lock()
         self.signal = f"{DOMAIN}.{entry.entry_id}.updated"
+        from .reminders import ReminderManager
+        self.reminders = ReminderManager(self)
         self.source_error = None
         self.source_unsub = None
         self.notification_id = f"{DOMAIN}_{entry.entry_id}"
@@ -41,7 +43,7 @@ class Ledger:
                 return
             await self.store.async_save(updated)
             self.data = updated
-        if self.data.get("notified_due") is None or due(self.data)>dt_util.now().date():
+        if not active(self.data) or self.data.get("notified_due") is None or due(self.data)>dt_util.now().date():
             persistent_notification.async_dismiss(self.hass, self.notification_id)
         await self.tick(sample=False)
 
@@ -50,7 +52,7 @@ class Ledger:
             await self.update_source()
         async with self.lock:
             deadline = due(self.data)
-            if dt_util.now().date() >= deadline and self.data.get("notified_due") != deadline.isoformat():
+            if active(self.data) and dt_util.now().date() >= deadline and self.data.get("notified_due") != deadline.isoformat():
                 # Notification and marker survive restarts; no repeat every hour.
                 persistent_notification.async_create(
                     self.hass,
@@ -62,6 +64,7 @@ class Ledger:
                 updated["notified_due"] = deadline.isoformat()
                 await self.store.async_save(updated)
                 self.data = updated
+        await self.reminders.sync()
         async_dispatcher_send(self.hass, self.signal)
 
 
@@ -82,7 +85,7 @@ class Ledger:
 
     async def update_source(self):
         source=self.data["source"]
-        if not source:
+        if not source or not active(self.data):
             return
         state=self.hass.states.get(source["entity_id"])
         try:
@@ -122,5 +125,13 @@ async def async_unload_entry(hass, entry):
 
 
 async def async_remove_entry(hass, entry):
+    ledger = Ledger(hass, entry)
+    await ledger.load()
+    ledger.data["reminders"].update(calendar=None, todo=None)
+    await ledger.reminders.sync()
+    if ledger.reminders.error:
+        persistent_notification.async_create(hass,
+            "Das Tarifbuch wurde entfernt, aber eigene Kalender-/To-do-Erinnerungen konnten nicht vollständig gelöscht werden. " + ledger.reminders.error,
+            title="DEr Stromtarif: Erinnerungen prüfen", notification_id=f"{DOMAIN}_cleanup_{entry.entry_id}")
     await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}").async_remove()
     persistent_notification.async_dismiss(hass, f"{DOMAIN}_{entry.entry_id}")

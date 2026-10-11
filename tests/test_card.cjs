@@ -10,8 +10,8 @@ const path=require('node:path');
   await page.evaluate(()=>{
    window.exportCalls=0;
    const card=document.querySelector('stromtarif-card');card.setConfig({type:'custom:stromtarif-card'});
-   const response={title:'Test',due:'2026-12-01',source_error:null,intervals:[{from:'2026-01-01',to:'2026-04-01',tariff:'A',consumption:600,total_cost:216}],
-    ledger:{billing_start:'2026-01-01',billing_end:'2027-01-01',monthly_installment:'100',source:null,tariffs:[{start:'2026-01-01',name:'<img src=x onerror="window.XSS=true">',price:'0.30',monthly_fee:'12'}],readings:[{date:'2026-01-01',value:'1000',kind:'initial'},{date:'2026-04-01',value:'1600',kind:'manual'}],payments:[{date:'2026-01-01',amount:'100'}]},
+   const response={title:'Test',due:'2026-12-01',source_error:null,reminder_error:'Ziel nicht verfügbar',schedule:[{key:'2026-02-01',date:'2026-02-17',amount:'83'}],intervals:[{from:'2026-01-01',to:'2026-04-01',tariff:'A',consumption:600,total_cost:216}],
+    ledger:{billing_start:'2026-01-01',billing_end:'2027-01-01',monthly_installment:'100',source:null,bills:[{tariff:'<img src=x onerror=window.XSS=true>',start:'2026-01-01',end:'2026-04-01',invoice_total:'210',balance:'-10'}],tariffs:[{start:'2026-01-01',name:'<img src=x onerror="window.XSS=true">',price:'0.30',monthly_fee:'12',active:false}],readings:[{date:'2026-01-01',value:'1000',kind:'initial'},{date:'2026-04-01',value:'1600',kind:'manual'}],payments:[{date:'2026-01-01',amount:'100'}]},
     finances:{observed_until:'2026-04-01',period_cost:216,paid:100,balance:116,planned:1200,forecast_cost:874,forecast_balance:-326,partial_period_estimate:false}};
    card.hass={callWS:async msg=>msg.type==='stromtarif/list'?[{entry_id:'entry1',title:'Test'}]:msg.type==='stromtarif/export'?(window.exportCalls++,{filename:'stromtarif.csv',csv:'Typ;Datum\nTarif;2026-01-01'}):response};
   });
@@ -20,6 +20,8 @@ const path=require('node:path');
   assert.equal(await page.evaluate(()=>window.XSS),undefined);
   assert.match(await page.evaluate(()=>document.querySelector('stromtarif-card').shadowRoot.textContent),/216,00/);
   assert.match(await page.evaluate(()=>document.querySelector('stromtarif-card').shadowRoot.textContent),/600/);
+  const text=await page.evaluate(()=>document.querySelector('stromtarif-card').shadowRoot.textContent);
+  assert.match(text,/Inaktiv/);assert.match(text,/Keine Erinnerung/);assert.match(text,/2026-02-17/);assert.match(text,/83,00/);assert.match(text,/Endabrechnungen/);assert.match(text,/210,00/);assert.match(text,/Ziel nicht verfügbar/);
   const download=page.waitForEvent('download');await page.getByRole('button',{name:'Historie als CSV herunterladen'}).click();
   assert.equal((await download).suggestedFilename(),'stromtarif.csv');
   assert.equal(await page.evaluate(()=>window.exportCalls),1);
