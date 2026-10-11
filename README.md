@@ -1,6 +1,6 @@
 # DEr Stromtarif für Home Assistant
 
-Version 0.6.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
+Version 0.7.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
 
 Verwaltet feste Stromtarife, manuelle Zählerstände, Tarifwechsel und Ableseerinnerungen. Alle Daten bleiben in Home Assistant. Mehrere Zähler können als separate Integrationseinträge angelegt werden.
 
@@ -70,9 +70,19 @@ Lizenz: MIT.
 
 Die folgenden Versionsabschnitte sind absteigend geordnet: neueste Version zuerst. Die vollständigen Versionshinweise stehen in [RELEASE_NOTES.md](RELEASE_NOTES.md), die kompakte Historie in [CHANGELOG.md](CHANGELOG.md).
 
+## Neu in 0.7.0: Historische Daten und unabhängige Rechnungen
+
+Im Verwaltungs-Panel **Historische Daten → Entwurf beginnen** wählen. Bekannte Ablesungen mit Zählernummer, Tarifzeiträume und Rechnungen in getrennten Schritten erfassen. Ein Tarif benötigt keine Rechnung. Rechnungen dürfen eigene Zeiträume haben und mehrere Tarife/Zähler umfassen. Unvollständige Angaben speichern und später ergänzen.
+
+Der Assistent zeigt Nachbardaten, Überschneidungen und Vorschläge für angrenzende Termine. Enddaten sind dort **einschließlich**; intern und in bestehenden Tabellen bleiben Grenzen exklusiv. Lücken und fehlende Preise werden ausdrücklich als unbekannt dargestellt; Kosten werden nicht mit null angesetzt. Fehlende Grenzstände können nach ausdrücklicher Auswahl zwischen vorhandenen Ständen geschätzt werden und bleiben gekennzeichnet.
+
+Vor **Übernahme** Vorschau prüfen und bestätigen. Der Assistent ersetzt die Historie des ausgewählten Tarifbuchs; Zahlungen bleiben erhalten und der vorherige Stand ist wiederherstellbar. Automatische Zählerquelle anschließend neu auswählen und kalibrieren. Eine Wiederherstellung ersetzt auch nach der Übernahme erfolgte Änderungen an Ablesungen, Tarifen und Rechnungen.
+
+Ab 0.7.0 werden beide Dashboard-Karten automatisch geladen. Nach Installation Home Assistant neu starten und Browser vollständig neu laden. Unter **Dashboard bearbeiten → Karte hinzufügen** nach „DEr Stromtarif“ suchen. Die Eingabekarte heißt „DEr Stromtarif – Zählerstand erfassen“. Ein alter manueller Ressourceneintrag kann entfernt oder auf `/stromtarif-card.js?v=0.7.0` aktualisiert werden. Vorhandene Karten bleiben nutzbar.
+
 ## Neu in 0.6.0: Zählerstand direkt im Dashboard erfassen
 
-Die neue kompakte Karte zeigt Zählernummer und letzte Ablesung. Ablesedatum und kumulativen kWh-Stand eingeben und **Zählerstand speichern** wählen. Bei mehreren Tarifbüchern erscheint eine Auswahl. Die bestehende Ressource `/stromtarif-card.js?v=0.6.0` als JavaScript-Modul verwenden; keine zweite Ressource erforderlich.
+Die neue kompakte Karte zeigt Zählernummer und letzte Ablesung. Ablesedatum und kumulativen kWh-Stand eingeben und **Zählerstand speichern** wählen. Bei mehreren Tarifbüchern erscheint eine Auswahl. Die bestehende Ressource `/stromtarif-card.js?v=0.7.0` als JavaScript-Modul verwenden; keine zweite Ressource erforderlich.
 
 ```yaml
 type: custom:stromtarif-reading-card
@@ -115,7 +125,7 @@ Unter **Konfigurieren → Seitenleiste ein-/ausblenden** den optionalen Eintrag 
 - Verbrauch nach **Monat, Quartal oder Jahr**, für alle Tarife oder einen einzelnen Tarif. Zeitanteilig verteilte Werte als Schätzung, unvollständige Perioden als Teilperiode gekennzeichnet.
 - Datenrevision verhindert, dass eine alte Tabellenansicht inzwischen geänderte Zählerstände überschreibt.
 
-Bedienung und Grenzen: [PANEL.md](PANEL.md). Nach dem Update Home Assistant neu starten. Die Ressource der Dashboard-Karte auf `/stromtarif-card.js?v=0.6.0` ändern; das Panel wird automatisch registriert.
+Bedienung und Grenzen: [PANEL.md](PANEL.md). Nach dem Update Home Assistant neu starten. Die Ressource der Dashboard-Karte auf `/stromtarif-card.js?v=0.7.0` ändern; das Panel wird automatisch registriert.
 
 ## Neu in 0.3.0
 
@@ -139,13 +149,13 @@ Zahlungsplan und Ableseintervall sind unabhängig. Eine Ablesung verschiebt kein
 
 **Aktuellen Tarif inaktiv setzen** beendet Erinnerungen und automatische Ablesungen ohne Rechnung; die letzte erfasste Ablesung ist die Abschlussgrenze. Für einen genauen Abschluss **Tarif abschließen** mit Enddatum und Endzählerstand verwenden. Enddatum bedeutet erster Tag ohne diesen Vertrag (exklusiv).
 
-Optional eine **Endabrechnung** mit Rechnungsbeginn, tatsächlichem Rechnungsbetrag und ausgewiesener Nachzahlung oder Guthaben erfassen. Diese Lieferantenrechnung bleibt getrennt von den berechneten Kosten und bestätigten Zahlungen und ist in Karte und CSV sichtbar. Der Rechnungsbetrag wird nicht erneut als Zahlung gebucht. Beim Tarifwechsel kann die Rechnung des alten Tarifs direkt erfasst werden; der alte Tarif wird inaktiv und der neue aktiv. Zeit zwischen einem abgeschlossenen Vertrag und einem späteren Tarifstart wird nicht dem alten Tarif berechnet. Bestehende Daten werden automatisch ergänzt, historische Tarife als inaktiv markiert.
+Beim Tarifabschluss optional eine **Endabrechnung** mit Rechnungsbeginn, tatsächlichem Rechnungsbetrag und ausgewiesener Nachzahlung oder Guthaben erfassen. Diese Lieferantenrechnung bleibt getrennt von den berechneten Kosten und bestätigten Zahlungen und ist in Karte und CSV sichtbar. Der Rechnungsbetrag wird nicht erneut als Zahlung gebucht. Beim Tarifwechsel kann die Rechnung des alten Tarifs direkt erfasst werden; der alte Tarif wird inaktiv und der neue aktiv. Zeit zwischen einem abgeschlossenen Vertrag und einem späteren Tarifstart wird nicht dem alten Tarif berechnet. Bestehende Daten werden automatisch ergänzt, historische Tarife als inaktiv markiert.
 
 ### Lesbare Updates
 
 Versionen werden als benannte GitHub-Releases mit Semver-Tag und kurzen deutschen Versionshinweisen veröffentlicht. Der Release-Workflow startet nach einem Push auf `main` und veröffentlicht erst nach erfolgreichen Modell-, HA-Laufzeit- und Kartentests. Er überschreibt kein bestehendes Release.
 
-Falls HACS bisher `main` oder eine kurze Commit-ID anzeigt: Repository öffnen → Menü → **Erneut herunterladen**, die aktuelle Release-Version auswählen, herunterladen und Home Assistant neu starten. Je nach HACS-Version kann die Menübezeichnung abweichen. Für die Dashboard-Karte die Ressource auf `/stromtarif-card.js?v=0.6.0` ändern und Browser aktualisieren. HACS-Installation und Darstellung in deiner eigenen Instanz wurden hier nicht getestet.
+Falls HACS bisher `main` oder eine kurze Commit-ID anzeigt: Repository öffnen → Menü → **Erneut herunterladen**, die aktuelle Release-Version auswählen, herunterladen und Home Assistant neu starten. Je nach HACS-Version kann die Menübezeichnung abweichen. Für die Dashboard-Karte die Ressource auf `/stromtarif-card.js?v=0.7.0` ändern und Browser aktualisieren. HACS-Installation und Darstellung in deiner eigenen Instanz wurden hier nicht getestet.
 
 ## Neu in 0.2.0
 
@@ -161,7 +171,7 @@ Sensoren zeigen Periodenkosten, bezahlte und geplante Abschläge, bisherigen Sal
 
 ### Dashboard-Karte und CSV
 
-1. In den Dashboard-Einstellungen unter **Ressourcen** `/stromtarif-card.js?v=0.6.0` als **JavaScript-Modul** hinzufügen (gegebenenfalls erweiterten Modus im Benutzerprofil aktivieren).
+1. In den Dashboard-Einstellungen unter **Ressourcen** `/stromtarif-card.js?v=0.7.0` als **JavaScript-Modul** hinzufügen (gegebenenfalls erweiterten Modus im Benutzerprofil aktivieren).
 2. Eine manuelle Karte hinzufügen:
 
 ```yaml

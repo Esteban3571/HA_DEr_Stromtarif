@@ -2,6 +2,30 @@
 
 Neueste Version zuerst. Ab 0.3.0 als GitHub-Releases; ältere Versionsstände wurden über den Hauptzweig bereitgestellt.
 
+## 0.7.0
+
+- **Historische Daten nacherfassen:** Neuer Assistent im Verwaltungs-Panel mit getrennten Schritten für Ablesungen/Zähler, Tarife, Rechnungen und Vorschau. Unvollständige Entwürfe bleiben gespeichert und verändern die aktive Historie nicht.
+- **Tarif und Abrechnung getrennt:** Neue und historische Tarife ohne Rechnung anlegen. Tarifwechsel erstellt keine Rechnung. Rechnungen separat unter „Abrechnung & Zahlungen“ bzw. im Rechnungs-Schritt des Assistenten erfassen; ihr Zeitraum darf mehrere Tarife und Zähler umfassen.
+- **Hilfen für Zeiträume:** Enddaten im Assistenten einschließlich eingeben. Hinweise zeigen benachbarte Stände, Überschneidungen und passende Grenzdatumvorschläge. Lücken oder unbekannte Preise bleiben unbekannt; betroffene Kosten/Prognosen werden als nicht berechenbar angezeigt.
+- **Optionale Schätzungen:** Fehlende Grenzstände nur nach ausdrücklicher Auswahl zwischen bekannten Ablesungen interpolieren und kennzeichnen. Keine Hochrechnung außerhalb bekannter Stände.
+- **Geschützte Übernahme:** Fehlerfreie Vorschau und Bestätigung erforderlich. Zwischenzeitliche Änderungen werden erkannt. Vorherige Historie kann wiederhergestellt werden; Zahlungen bleiben erhalten. Automatische Zählerquelle nach Übernahme oder Wiederherstellung neu auswählen und kalibrieren.
+- **Dashboard-Karten sichtbar machen:** Kartenmodul automatisch über das Home-Assistant-Frontend laden; manueller Ressourceneintrag nicht mehr erforderlich. Inhaltsabhängige URL gegen veraltete Skripte, Standardkonfiguration für die Kartenauswahl und Schutz gegen doppelte Registrierung.
+
+### Aktualisieren
+
+In HACS **v0.7.0** herunterladen, Home Assistant neu starten und den Browser vollständig neu laden. Unter **Dashboard bearbeiten → Karte hinzufügen** nach „DEr Stromtarif“ suchen. Die kompakte Eingabekarte heißt „DEr Stromtarif – Zählerstand erfassen“. Vorhandene Karten bleiben nutzbar. Ein alter manueller Ressourceneintrag kann entfernt werden; alternativ auf `/stromtarif-card.js?v=0.7.0` aktualisieren.
+
+```yaml
+type: custom:stromtarif-reading-card
+title: Zählerstand erfassen
+```
+
+Für historische Daten das Verwaltungs-Panel öffnen und **Historische Daten → Entwurf beginnen** wählen. Bereits vorhandene Daten werden in den Entwurf übernommen. Zunächst Entwurf prüfen; die Übernahme ersetzt Ablesungen, Tarife und Rechnungen des ausgewählten Tarifbuchs.
+
+### Geprüft
+
+72 Python-Tests einschließlich Home Assistant Core 2026.2.3 sowie drei Chromium-Testprogramme bestanden. Frontend-Modulregistrierung im HA-Laufzeit-Test und doppelte Skriptladung im Browser geprüft. Kartenpicker und konkrete HA-/HACS-Installation des Nutzers wurden nicht geprüft.
+
 ## 0.6.0
 
 - **Neue Eingabekarte:** `custom:stromtarif-reading-card` zeigt die aktuelle Zählernummer und letzte Ablesung. Ablesedatum und kumulativen kWh-Stand direkt im Dashboard erfassen und speichern.

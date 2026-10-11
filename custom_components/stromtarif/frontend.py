@@ -114,7 +114,7 @@ async def async_update_panel(hass):
     if ledgers:
         await panel_custom.async_register_panel(hass,frontend_url_path="stromtarif",webcomponent_name="stromtarif-panel",
             sidebar_title="DEr Stromtarif" if any(ledger.data["show_panel"] for ledger in ledgers) else None,
-            sidebar_icon="mdi:transmission-tower",module_url="/stromtarif-panel.js?v=0.6.0",require_admin=True)
+            sidebar_icon="mdi:transmission-tower",module_url="/stromtarif-panel.js?v=0.7.0",require_admin=True)
 
 
 @websocket_api.websocket_command({vol.Required("type"): "stromtarif/history_preview",vol.Required("entry_id"):str})

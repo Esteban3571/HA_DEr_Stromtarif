@@ -1,4 +1,4 @@
-# Testbericht – DEr Stromtarif 0.6.0
+# Testbericht – DEr Stromtarif 0.7.0
 
 Geprüft am 11. Oktober 2026 in einer separaten lokalen Testkopie, vor dem Hochladen auf GitHub.
 
@@ -71,3 +71,9 @@ Der echte HA-Laufzeittest prüft zusätzlich stündliche Verarbeitung mit Speich
 ## Eingabekarte 0.6.0
 
 Chromium-Test der neuen Karte bestanden: Anzeige der Zählernummer, Dezimalwerte, neue Ablesung, Korrektur am selben Datum, Schreibrevision, erhaltene Eingaben bei Fehlern und Aktualisieren, Auswahlwechsel, Sperre inaktiver Tarife und Textmaskierung. Alle 63 Python-Tests und bisherigen Browser-Tests weiterhin bestanden.
+
+## Version 0.7.0
+
+72 Python-Tests und drei Chromium-Testprogramme bestanden. Zusätzliche Fälle: getrennte Tarif-/Rechnungsanlage, unabhängige Rechnungszeiträume, unvollständige Entwürfe ohne Änderung der aktiven Historie, Lücken mit unbekannten Kosten, optionale Grenzstandschätzungen, Überschneidungshinweise, veraltete Entwürfe und Wiederherstellung bei erhaltenen Zahlungen. Der HA-Laufzeittest prüft Entwurfs- und Vorschau-API, Administratorzugriff und tatsächliche automatische Frontend-Modulregistrierung. Chromium prüft gespeicherte unvollständige Entwurfszeilen, fehlende Rechnungsfelder bei Tarifanlage, gesperrte Übernahme bei Fehlern, doppelte Skriptladung und Standardkonfiguration für die Kartenauswahl.
+
+HA Core 2026.2.3 getestet; neueste HA-Version und konkretes Nutzersystem nicht geprüft. Der Browser nutzt simulierte WebSocket-Antworten; der HA-Kartenpicker wurde nicht automatisiert geprüft.

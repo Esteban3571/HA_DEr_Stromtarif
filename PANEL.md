@@ -34,3 +34,14 @@ Alle Schreibbefehle erfordern ein Administratorkonto. Jede Änderung verwendet e
 - Python-, JavaScript- und JSON-Dateien geprüft.
 
 Nicht geprüft wurde die konkrete HA-/HACS-Installation des Nutzers. Der Panel-Browsertest verwendet simulierte WebSocket-Antworten; Backend, Panelregistrierung, Speicherung und HA-Komponenten wurden separat im echten Core getestet. Ein vollständig zusammenhängender Browsertest innerhalb der HA-Anwendungsoberfläche steht noch aus.
+
+## Historische Daten ab 0.7.0
+
+Im Verwaltungs-Panel **Historische Daten → Entwurf beginnen** wählen. Bekannte Ablesungen mit Zählernummer, Tarifzeiträume und Rechnungen in getrennten Schritten erfassen. Ein Tarif benötigt keine Rechnung. Rechnungen dürfen eigene Zeiträume haben und mehrere Tarife/Zähler umfassen. Unvollständige Angaben speichern und später ergänzen.
+
+Der Assistent zeigt Nachbardaten, Überschneidungen und Vorschläge für angrenzende Termine. Enddaten sind dort **einschließlich**; intern und in bestehenden Tabellen bleiben Grenzen exklusiv. Lücken und fehlende Preise werden ausdrücklich als unbekannt dargestellt; Kosten werden nicht mit null angesetzt. Fehlende Grenzstände können nach ausdrücklicher Auswahl zwischen vorhandenen Ständen geschätzt werden und bleiben gekennzeichnet.
+
+Vor **Übernahme** Vorschau prüfen und bestätigen. Der Assistent ersetzt die Historie des ausgewählten Tarifbuchs; Zahlungen bleiben erhalten und der vorherige Stand ist wiederherstellbar. Automatische Zählerquelle anschließend neu auswählen und kalibrieren. Eine Wiederherstellung ersetzt auch nach der Übernahme erfolgte Änderungen an Ablesungen, Tarifen und Rechnungen.
+
+Ab 0.7.0 werden beide Dashboard-Karten automatisch geladen. Nach Installation Home Assistant neu starten und Browser vollständig neu laden. Unter **Dashboard bearbeiten → Karte hinzufügen** nach „DEr Stromtarif“ suchen. Die Eingabekarte heißt „DEr Stromtarif – Zählerstand erfassen“. Ein alter manueller Ressourceneintrag kann entfernt oder auf `/stromtarif-card.js?v=0.7.0` aktualisiert werden. Vorhandene Karten bleiben nutzbar.
+

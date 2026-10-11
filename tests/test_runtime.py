@@ -141,6 +141,8 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
     from homeassistant.components import frontend
     from homeassistant.const import EVENT_COMPONENT_LOADED
     from hashlib import sha256
+    if frontend.DATA_EXTRA_MODULE_URL not in hass.data:
+     hass.data[frontend.DATA_EXTRA_MODULE_URL]=frontend.UrlManager(lambda action,url:None,[])
     module_urls=hass.data[frontend.DATA_EXTRA_MODULE_URL]
     hass.bus.async_fire(EVENT_COMPONENT_LOADED,{'component':'frontend'})
     await hass.async_block_till_done()

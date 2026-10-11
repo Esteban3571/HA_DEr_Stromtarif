@@ -1,5 +1,14 @@
 # Änderungen
 
+## 0.7.0
+
+- Historischer Eingabeassistent mit speicherbaren Entwürfen, Nachbardaten und Grenzdatumvorschlägen.
+- Tarifanlage und Rechnungslegung getrennt; unabhängige Rechnungszeiträume.
+- Unbekannte Kosten statt Nullwerte und ausdrückliche, markierte Grenzstandschätzungen.
+- Geprüfte Übernahme mit Wiederherstellung und Schutz vor veralteten Entwürfen.
+- Beide Dashboard-Karten automatisch laden, Standardkonfiguration und doppelte Registrierung absichern.
+- 72 Python-Tests und drei Chromium-Testprogramme bestanden.
+
 ## 0.6.0
 
 - Kompakte Dashboard-Karte zur manuellen Zählerstandserfassung mit Zählernummer, Datum und kWh-Eingabe.
