@@ -1,6 +1,6 @@
-# Stromtarif für Home Assistant
+# DEr Stromtarif für Home Assistant
 
-Version 0.1.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
+Version 0.1.1 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
 
 Verwaltet feste Stromtarife, manuelle Zählerstände, Tarifwechsel und Ableseerinnerungen. Alle Daten bleiben in Home Assistant. Mehrere Zähler können als separate Integrationseinträge angelegt werden.
 
@@ -8,15 +8,15 @@ Verwaltet feste Stromtarife, manuelle Zählerstände, Tarifwechsel und Ableseeri
 
 1. HACS öffnen → Menü → **Benutzerdefinierte Repositories**.
 2. `https://github.com/Esteban3571/HA_DEr_Stromtarif` als Kategorie **Integration** hinzufügen.
-3. **Stromtarif** herunterladen und Home Assistant neu starten.
-4. Einstellungen → Geräte & Dienste → Integration hinzufügen → **Stromtarif**.
+3. **DEr Stromtarif** herunterladen und Home Assistant neu starten.
+4. Einstellungen → Geräte & Dienste → Integration hinzufügen → **DEr Stromtarif**.
 5. Tarifname, Startdatum, Anfangszählerstand, Arbeitspreis, monatliche Grundgebühr und Erinnerungsintervall eingeben.
 
 Benötigt Home Assistant **2025.12 oder neuer**. Alternativ `custom_components/stromtarif` nach `/config/custom_components/stromtarif` kopieren und neu starten.
 
 ## Bedienung
 
-Unter Einstellungen → Geräte & Dienste → Stromtarif → **Konfigurieren**:
+Unter Einstellungen → Geräte & Dienste → DEr Stromtarif → **Konfigurieren**:
 
 - **Ablesung erfassen:** kumulativen Zählerstand in kWh und tatsächliches Ablesedatum eingeben. Standardintervall: 90 Tage ab letzter Ablesung, keine festen Quartalstermine.
 - **Neuen Tarif hinterlegen:** ersten Geltungstag, Anfangszählerstand und neue Preise erfassen. Dieser Stand schließt den bisherigen Tarif ab; die alte Historie bleibt erhalten. Am gleichen Tag wie die letzte Ablesung muss der Stand identisch sein.
