@@ -53,8 +53,6 @@ def tariff_schema(first=False, reminders=None):
         fields[vol.Required("interval", default=90)] = selector.NumberSelector(
             selector.NumberSelectorConfig(min=1, max=730, step=1, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="Tage"))
     fields.update(reminder_fields(reminders))
-    if not first:
-        fields.update(bill_fields())
     return vol.Schema(fields)
 
 

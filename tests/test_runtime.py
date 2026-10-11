@@ -119,7 +119,10 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
     await hass.async_block_till_done();self.assertEqual(hass.states.get('binary_sensor.runtime_ablesung_fallig').state,'off')
     self.assertEqual(hass.states.get('sensor.runtime_tarifstatus').state,'inaktiv')
     self.assertEqual(hass.states.get('sensor.runtime_nachste_ablesung').state,'unknown')
-    self.assertEqual((await submit('tariff',{'name':'Neuer Tarif','date':today.isoformat(),'reading':1010,'price':.32,'monthly_fee':10,'final_bill':True,'bill_start':yesterday.isoformat(),'invoice_total':12,'invoice_balance':5,'balance_kind':'refund'}))['type'],'create_entry')
+    self.assertEqual((await submit('tariff',{'name':'Neuer Tarif','date':today.isoformat(),'reading':1010,'price':.32,'monthly_fee':10}))['type'],'create_entry')
+    self.assertEqual(ledger.data['bills'],[])
+    from custom_components.stromtarif.model import record_bill
+    await ledger.mutate(lambda data:record_bill(data,{'bill_start':yesterday.isoformat(),'invoice_total':12,'invoice_balance':5,'balance_kind':'refund'},data['tariffs'][0]))
     self.assertFalse(ledger.data['tariffs'][0]['active']);self.assertTrue(ledger.data['tariffs'][-1]['active'])
     self.assertEqual(float(ledger.data['bills'][0]['balance']),-5);self.assertEqual(len(ledger.data['payments']),1)
     self.assertEqual(len(other_todo.todo_items),1)
@@ -165,6 +168,21 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
     ws_periods(hass,stats,{'id':30,'entry_id':entry.entry_id,'unit':'month'});self.assertTrue(stats.send_result.called)
     changed=await panel_write('tariff_edit',{'index':0,'name':'Korrigiert','price':.4,'monthly_fee':12})
     self.assertTrue(changed.send_result.called);self.assertEqual(ledger.data['bills'][0]['tariff'],'Korrigiert')
+    # Historical drafts remain isolated; invoices are optional and preview is admin-only.
+    from custom_components.stromtarif.frontend import ws_history_preview
+    await panel_write('history_start',{})
+    previous=deepcopy(ledger.data['readings'])
+    draft=deepcopy(ledger.data['history_draft']);draft['readings'].append({'date':'','value':''})
+    saved=await panel_write('history_save',{'draft':draft});self.assertTrue(saved.send_result.called)
+    self.assertEqual(ledger.data['readings'],previous)
+    preview_connection=SimpleNamespace(user=SimpleNamespace(is_admin=True),send_result=Mock(),send_error=Mock())
+    ws_history_preview(hass,preview_connection,{'id':31,'entry_id':entry.entry_id})
+    result=preview_connection.send_result.call_args.args[1]
+    self.assertFalse(result['can_apply']);self.assertNotIn('_candidate',result)
+    rejected=await panel_write('history_apply',{'confirm':True})
+    self.assertEqual(rejected.send_error.call_args.args[1],'history_invalid')
+    self.assertEqual(ledger.data['readings'],previous)
+    with self.assertRaises(Unauthorized):ws_history_preview(hass,denied,{'id':32,'entry_id':entry.entry_id})
     # Every options-menu operation also has a validated panel equivalent.
     from custom_components.stromtarif.panel_api import apply
     from custom_components.stromtarif import model as panel_model

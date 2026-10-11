@@ -72,8 +72,6 @@ def change_tariff(ledger, data, today):
     old["active"] = False
     old.setdefault("end", tariff["start"])
     old.setdefault("end_reading", last["value"] if old["end"] == last["date"] else tariff["reading"])
-    if data.get("final_bill"):
-        record_bill(ledger, data, old)
     ledger["tariffs"].append(tariff)
     for key in ("calendar", "todo"):
         if key in data:
@@ -92,6 +90,8 @@ def undo_reading(ledger):
 
 def fee(monthly, start, end):
     """Calendar-month proration, including leap years."""
+    if monthly is None:
+        return None
     total = Decimal("0")
     while start < end:
         days = monthrange(start.year, start.month)[1]
@@ -108,7 +108,7 @@ def tariff_at(ledger, when):
 
 def totals(ledger):
     rows = intervals(ledger)
-    return {key: sum(row[key] for row in rows) for key in ("consumption", "energy_cost", "base_cost", "total_cost")}
+    return {key: None if any(row[key] is None for row in rows) else sum(row[key] for row in rows) for key in ("consumption", "energy_cost", "base_cost", "total_cost")}
 
 
 def due(ledger):
@@ -338,6 +338,7 @@ def period_cost(data, start, end):
     base = Decimal(0)
     consumption = Decimal(0)
     estimated = False
+    known = True
     for before, after in zip(data["readings"], data["readings"][1:]):
         if before.get("meter_id") != after.get("meter_id"):
             continue
@@ -347,13 +348,16 @@ def period_cost(data, start, end):
         left, right = max(a,start), min(b,end,cutoff)
         if right <= left:
             continue
-        estimated |= left != a or right != b
+        estimated |= left != a or right != b or before.get("estimated",False) or after.get("estimated",False)
         used = (Decimal(after["value"]) - Decimal(before["value"])) * Decimal((right-left).days) / Decimal((b-a).days)
         tariff = tariff_at(data,before["date"])
         consumption += used
-        energy += used * Decimal(tariff["price"])
-        base += fee(tariff["monthly_fee"],left,right)
-    return float(consumption), float(energy+base), estimated
+        if tariff.get("price") is None or tariff.get("monthly_fee") is None:
+            known = False
+        else:
+            energy += used * Decimal(tariff["price"])
+            base += fee(tariff["monthly_fee"],left,right)
+    return float(consumption), float(energy+base) if known else None, estimated
 
 
 def planned_payments(data):
@@ -370,12 +374,12 @@ def finances(data):
     paid = sum(float(p["amount"]) for p in data["payments"] if start.isoformat() <= p["date"] < end.isoformat())
     planned = planned_payments(data)
     forecast = None
-    if observed_end > start:
+    if observed_end > start and observed_cost is not None and data["tariffs"][-1].get("price") is not None and data["tariffs"][-1].get("monthly_fee") is not None:
         remaining = max((end-observed_end).days,0)
         tariff = data["tariffs"][-1]
         forecast = observed_cost + consumption / (observed_end-start).days * remaining * float(tariff["price"]) + float(fee(tariff["monthly_fee"],observed_end,end))
     return {"period_consumption": consumption, "period_cost": observed_cost,
-            "paid": paid, "balance": observed_cost-paid, "planned": planned,
+            "paid": paid, "balance": None if observed_cost is None else observed_cost-paid, "planned": planned,
             "forecast_cost": forecast, "forecast_balance": None if forecast is None else forecast-planned,
             "partial_period_estimate": estimated, "observed_until": observed_end.isoformat() if observed_end >= start else None}
 
@@ -490,9 +494,9 @@ def intervals(data):
         stop = min(b, date.fromisoformat(tariff.get("end", b.isoformat())))
         covered = max((stop-a).days, 0)
         used = used * Decimal(covered) / Decimal((b-a).days)
-        energy=used*Decimal(tariff["price"])
+        energy=used*Decimal(tariff["price"]) if tariff.get("price") is not None else None
         base=fee(tariff["monthly_fee"], a, max(a,stop))
-        result.append({"from":before["date"],"to":after["date"],"tariff":tariff["name"],"meter_number":before.get("meter_number", ""),"consumption":float(used),"energy_cost":float(energy),"base_cost":float(base),"total_cost":float(energy+base)})
+        result.append({"from":before["date"],"to":after["date"],"tariff":tariff["name"],"meter_number":before.get("meter_number", ""),"consumption":float(used),"energy_cost":None if energy is None else float(energy),"base_cost":None if base is None else float(base),"total_cost":None if energy is None or base is None else float(energy+base),"estimated":bool(before.get("estimated") or after.get("estimated"))})
     return result
 
 
@@ -544,7 +548,8 @@ def edit_reading(data, index, when, value, today):
         partner = data["readings"][index + (1 if old["kind"] == "meter_end" else -1)]
         partner["date"] = when
     old.update(date=when, value=value)
-    if old["kind"] == "automatic":
+    old.pop("estimated",None)
+    if old["kind"] in {"automatic", "estimated"}:
         old["kind"] = "manual"
     for tariff in data["tariffs"]:
         if tariff["start"] == old_date and tariff.get("meter_id") == old.get("meter_id"):
@@ -582,7 +587,7 @@ def tariff_summary(data, index):
     consumption, cost, estimated = period_cost(data, start, end)
     return {"index": index, "name": tariff["name"], "start": start.isoformat(), "end": end.isoformat(),
             "consumption": consumption, "cost": cost, "estimated": estimated,
-            "effective_price": cost / consumption if consumption > 0 else None}
+            "effective_price": cost / consumption if consumption > 0 and cost is not None else None}
 
 
 def consumption_periods(data, unit="month", tariff_index=None):
@@ -607,6 +612,6 @@ def consumption_periods(data, unit="month", tariff_index=None):
         label = str(cursor.year) if unit == "year" else f"{cursor.year} Q{(cursor.month-1)//3+1}" if unit == "quarter" else cursor.strftime("%Y-%m")
         rows.append({"label": label, "start": left.isoformat(), "end": right.isoformat(),
             "consumption": consumption, "cost": cost, "estimated": estimated, "partial": partial,
-            "effective_price": cost/consumption if consumption > 0 else None})
+            "effective_price": cost/consumption if consumption > 0 and cost is not None else None})
         cursor = stop
     return rows

@@ -39,7 +39,9 @@ class ReleaseFeaturesTests(unittest.TestCase):
   self.assertIn('Endabrechnung;',m.csv_export(l))
  def test_change_closes_old_keeps_new_active(self):
   l=self.ledger();m.change_tariff(l,data(name='B',date='2026-04-01',reading=1600,final_bill=True,bill_start='2026-01-01',invoice_total=216,invoice_balance=116),TODAY)
-  self.assertFalse(l['tariffs'][0]['active']);self.assertTrue(m.active(l));self.assertEqual(len(l['bills']),1)
+  self.assertFalse(l['tariffs'][0]['active']);self.assertTrue(m.active(l));self.assertEqual(len(l['bills']),0)
+  m.record_bill(l,{'bill_start':'2026-01-01','invoice_total':216,'invoice_balance':116},l['tariffs'][0])
+  self.assertEqual(len(l['bills']),1)
   m.migrate(l);self.assertFalse(l['tariffs'][0]['active']);self.assertTrue(m.active(l))
  def test_collision_after_recurring_day_change(self):
   l=self.ledger();m.configure_finances(l,'2026-01-01','2026-03-01',100,1)

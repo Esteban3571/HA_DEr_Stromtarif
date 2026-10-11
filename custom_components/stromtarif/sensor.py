@@ -62,7 +62,7 @@ class LedgerSensor(LedgerEntity, SensorEntity):
         if self.key == "reading":
             return float(data["readings"][-1]["value"])
         if self.key in {"price", "monthly_fee"}:
-            return float(data["tariffs"][-1][self.key])
+            return None if data["tariffs"][-1].get(self.key) is None else float(data["tariffs"][-1][self.key])
         if self.key in {"last_reading", "next_reading"}:
             when = datetime.fromisoformat(data["readings"][-1]["date"]).date() if self.key == "last_reading" else due(data)
             if self.key == "next_reading" and not active(data):
@@ -71,9 +71,11 @@ class LedgerSensor(LedgerEntity, SensorEntity):
         if self.key == "pending_fee":
             if not active(data):
                 return 0
-            return round(float(fee(data["tariffs"][-1]["monthly_fee"],
-                                   datetime.fromisoformat(data["readings"][-1]["date"]).date(), dt_util.now().date())), 2)
-        return round(totals(data)[self.key], 4 if self.key == "consumption" else 2)
+            value = fee(data["tariffs"][-1]["monthly_fee"],
+                                   datetime.fromisoformat(data["readings"][-1]["date"]).date(), dt_util.now().date())
+            return None if value is None else round(float(value),2)
+        value=totals(data)[self.key]
+        return None if value is None else round(value, 4 if self.key == "consumption" else 2)
 
     @property
     def extra_state_attributes(self):

@@ -3,6 +3,7 @@ from . import model as m
 from .reminders import validate_targets
 
 ERRORS = {
+    "history_invalid": "Bitte die Hinweise im Assistenten prüfen. Der Entwurf bleibt erhalten; die aktive Historie wurde nicht verändert.",
     "invalid_meter": "Bitte eine eindeutige Zählernummer angeben; beim Altbestand zuerst die bisherige Nummer hinterlegen.",
     "meter_boundary": "Zählerwechsel benötigt Endstand und Anfangsstand am selben Datum.",
     "duplicate_bill": "Für diesen Zeitraum wurde bereits eine Periodenabrechnung erfasst.",
@@ -37,7 +38,18 @@ def boolean(values, key):
 
 
 def apply(hass, data, operation, values, today):
-    if operation == "reading_add":
+    if operation.startswith("history_"):
+        from . import history_wizard as w
+        if operation == "history_start":data["history_draft"]=w.seed(data)
+        elif operation == "history_save":w.save(data,values["draft"])
+        elif operation == "history_apply":
+            if not boolean(values,"confirm"):raise ValueError("invalid_input")
+            w.adopt(data,today)
+        elif operation == "history_restore":
+            if not boolean(values,"confirm"):raise ValueError("invalid_input")
+            w.restore(data)
+        else:raise ValueError("invalid_input")
+    elif operation == "reading_add":
         m.add_reading(data, values["reading"], values["date"], today)
     elif operation == "meter_rename":
         m.rename_meter(data,values["meter_id"],values["meter_number"])

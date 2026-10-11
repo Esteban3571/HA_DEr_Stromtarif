@@ -45,7 +45,7 @@ async def async_setup_frontend(hass):
         return
     await hass.http.async_register_static_paths([StaticPathConfig("/stromtarif-card.js",str(Path(__file__).parent/"www"/"stromtarif-card.js"),False),
         StaticPathConfig("/stromtarif-panel.js", str(Path(__file__).parent/"www"/"stromtarif-panel.js"),False)])
-    for command in (ws_list,ws_history,ws_export,ws_update,ws_periods):
+    for command in (ws_list,ws_history,ws_export,ws_update,ws_periods,ws_history_preview):
         websocket_api.async_register_command(hass,command)
     data["frontend_ready"]=True
 
@@ -67,7 +67,7 @@ async def ws_update(hass, connection, msg):
         code=str(err) if str(err) in ERRORS else "invalid_input"
         connection.send_error(msg["id"],code,ERRORS[code])
         return
-    if msg["operation"] in {"source", "meter_replace"}:
+    if msg["operation"] in {"source", "meter_replace", "history_apply", "history_restore"}:
         ledger.bind_source()
     if msg["operation"]=="panel":
         await async_update_panel(hass)
@@ -99,3 +99,17 @@ async def async_update_panel(hass):
         await panel_custom.async_register_panel(hass,frontend_url_path="stromtarif",webcomponent_name="stromtarif-panel",
             sidebar_title="DEr Stromtarif" if any(ledger.data["show_panel"] for ledger in ledgers) else None,
             sidebar_icon="mdi:transmission-tower",module_url="/stromtarif-panel.js?v=0.6.0",require_admin=True)
+
+
+@websocket_api.websocket_command({vol.Required("type"): "stromtarif/history_preview",vol.Required("entry_id"):str})
+@websocket_api.require_admin
+@callback
+def ws_history_preview(hass, connection, msg):
+    from .history_wizard import preview
+    ledger=hass.data.get(DOMAIN,{}).get(msg["entry_id"])
+    if not hasattr(ledger,"data"):
+        connection.send_error(msg["id"],"not_found","Tarifbuch nicht geladen")
+        return
+    result=preview(ledger.data,dt_util.now().date())
+    result.pop("_candidate",None)
+    connection.send_result(msg["id"],result)
