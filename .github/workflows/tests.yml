@@ -24,6 +24,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node --check custom_components/stromtarif/www/stromtarif-card.js
       - run: node tests/test_card.cjs
+      - run: node tests/test_reading_card.cjs
       - run: node --check custom_components/stromtarif/www/stromtarif-panel.js
       - run: node tests/test_panel.cjs
 

@@ -2,6 +2,30 @@
 
 Neueste Version zuerst. Ab 0.3.0 als GitHub-Releases; ältere Versionsstände wurden über den Hauptzweig bereitgestellt.
 
+## 0.6.0
+
+- **Neue Eingabekarte:** `custom:stromtarif-reading-card` zeigt die aktuelle Zählernummer und letzte Ablesung. Ablesedatum und kumulativen kWh-Stand direkt im Dashboard erfassen und speichern.
+- **Tarifbuchauswahl:** Mehrere Tarifbücher auswählen; optional `entry_id` zur Vorauswahl und `title` für die Überschrift angeben.
+- **Korrektur am selben Datum:** Letzte normale oder automatische Ablesung am gleichen Datum korrigieren. Anfangsstände und Wechselgrenzen weiterhin im Verwaltungs-Panel bearbeiten.
+- **Geschütztes Speichern:** Administratorprüfung und Datenrevision; bei Fehlern bleiben Eingaben erhalten. Inaktive Tarife sind für die schnelle Erfassung gesperrt.
+
+### Aktualisieren und Karte anlegen
+
+In HACS **v0.6.0** herunterladen und Home Assistant neu starten. Die Dashboard-Ressource `/stromtarif-card.js?v=0.6.0` als **JavaScript-Modul** verwenden und Browser neu laden. Die bestehende und die neue Karte verwenden dieselbe Ressource.
+
+Eine manuelle Dashboard-Karte hinzufügen:
+
+```yaml
+type: custom:stromtarif-reading-card
+title: Zählerstand erfassen
+```
+
+Die Karte benötigt ein Administratorkonto. Zwischenzeitliche Datenänderungen erfordern **Aktualisieren** und erneutes Prüfen vor dem Speichern. Zählernummern und Zählerwechsel weiterhin im Verwaltungs-Panel verwalten.
+
+### Geprüft
+
+63 Python-Tests mit Home Assistant Core 2026.2.3 sowie Chromium-Tests für Eingabekarte, bestehende Karte und Panel bestanden. Die konkrete HA-/HACS-Installation des Nutzers wurde nicht geprüft.
+
 ## 0.5.0
 
 - **Abschläge bezahlen:** Geplanten Abschlag mit einem Klick als bezahlt markieren; Datum und Betrag anschließend unter „Bezahlte Abschläge“ ändern. Doppelte Buchungen desselben Termins werden verhindert.

@@ -1,5 +1,12 @@
 # Änderungen
 
+## 0.6.0
+
+- Kompakte Dashboard-Karte zur manuellen Zählerstandserfassung mit Zählernummer, Datum und kWh-Eingabe.
+- Tarifbuchauswahl, optionale Überschrift und vorgewählter Eintrag.
+- Korrektur der letzten normalen Ablesung am selben Datum, Revision und erhaltene Eingaben bei Fehlern.
+- Chromium-Test und CI-Prüfung der Eingabekarte ergänzt.
+
 ## 0.5.0
 
 - Geplante Abschläge per Klick bestätigen und als Zahlung bearbeiten.

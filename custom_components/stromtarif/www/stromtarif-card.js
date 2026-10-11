@@ -56,3 +56,54 @@ class StromtarifCard extends HTMLElement {
 customElements.define('stromtarif-card',StromtarifCard);
 window.customCards=window.customCards||[];
 window.customCards.push({type:'stromtarif-card',name:'DEr Stromtarif',description:'Tarife, Ablesungen, Abschläge, Prognose und CSV-Export'});
+
+/* Compact reading input; shares the authenticated, revision-protected ledger API. */
+class StromtarifReadingCard extends HTMLElement {
+  constructor(){super();this.attachShadow({mode:'open'});this._busy=false;this._draft={};}
+  setConfig(config){this._config=config;this._selected=config.entry_id||null;this._data=null;this._draft={};if(this._hass&&this.isConnected)this.refresh();}
+  set hass(value){this._hass=value;if(this.isConnected&&!this._data&&!this._busy)this.refresh();}
+  connectedCallback(){if(this._hass&&!this._data)this.refresh();}
+  getCardSize(){return 4;}
+  today(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:this._hass?.config?.time_zone||'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());return ['year','month','day'].map(k=>parts.find(p=>p.type===k).value).join('-');}
+  async refresh(){
+    if(!this._hass||this._busy)return;this._busy=true;this.controls(true);
+    try{
+      this._entries=await this._hass.callWS({type:'stromtarif/list'});
+      if(!this._selected)this._selected=this._entries[0]?.entry_id;
+      if(!this._entries.some(e=>e.entry_id===this._selected))throw new Error('Tarifbuch nicht verfügbar. Auswahl bzw. entry_id prüfen.');
+      this._data=await this._hass.callWS({type:'stromtarif/history',entry_id:this._selected});this.render();
+    }catch(error){this._notice=error.message||String(error);if(this._data)this.message();else{this.shadowRoot.innerHTML='<ha-card style="padding:20px"><h2>Zählerstand erfassen</h2><p role="alert"></p><p>Diese Karte benötigt ein Administratorkonto.</p><button>Erneut laden</button></ha-card>';this.shadowRoot.querySelector('[role=alert]').textContent=this._notice;this.shadowRoot.querySelector('button').onclick=()=>this.refresh();}}
+    finally{this._busy=false;this.controls(false);}
+  }
+  controls(disabled){this.shadowRoot.querySelectorAll('button,input,select').forEach(e=>e.disabled=disabled);const save=this.shadowRoot.querySelector('#save-reading');if(save&&this._data?.ledger.tariffs.at(-1).active===false)save.disabled=true;}
+  message(){const e=this.shadowRoot.querySelector('#reading-message');if(e)e.textContent=this._notice||'';}
+  render(){
+    const l=this._data.ledger,last=l.readings.at(-1),inactive=l.tariffs.at(-1).active===false;
+    this.shadowRoot.innerHTML=`<style>:host{display:block}ha-card{padding:20px}h2{margin:0 0 16px;color:#f57c00}label{display:grid;gap:6px;margin:14px 0}input,select,button{box-sizing:border-box;max-width:100%;font:inherit;padding:10px;border-radius:8px;border:1px solid var(--divider-color,#aaa);color:var(--primary-text-color,#222);background:var(--card-background-color,white)}input,select{width:100%}button{cursor:pointer}.primary{background:#ef7800;color:white}button:disabled{opacity:.5;cursor:default}.hint{color:var(--secondary-text-color,#666);overflow-wrap:anywhere}footer{display:flex;gap:10px;flex-wrap:wrap}</style><ha-card><h2>${esc(this._config?.title||'Zählerstand erfassen')}</h2>
+      <label>Tarifbuch<select id="reading-entry" aria-label="Tarifbuch">${this._entries.map(e=>`<option value="${esc(e.entry_id)}" ${e.entry_id===this._selected?'selected':''}>${esc(e.title)}</option>`).join('')}</select></label>
+      <p class="hint">Zählernummer: <strong>${esc(last.meter_number||'Noch nicht hinterlegt')}</strong><br>Letzter Stand: ${esc(last.value)} kWh am ${esc(last.date)}</p>
+      ${inactive?'<p>Tarif ist inaktiv. Im Verwaltungs-Panel prüfen.</p>':''}
+      <form id="reading-form"><label>Ablesedatum<input aria-label="Ablesedatum" id="reading-date" type="date" required max="${this.today()}" value="${esc(this._draft.date||this.today())}"></label><label>Zählerstand (kWh)<input aria-label="Zählerstand (kWh)" id="reading-value" type="number" min="0" step="any" required placeholder="Aktuellen Stand eingeben" value="${esc(this._draft.value??'')}"></label><footer><button class="primary" id="save-reading" type="submit">Zählerstand speichern</button><button id="reload-reading" type="button">Aktualisieren</button></footer></form>
+      <p id="reading-message" role="status" aria-live="polite"></p><p class="hint">Am Datum der letzten normalen Ablesung wird deren Stand korrigiert. Zählerwechsel und Grenzstände im Verwaltungs-Panel bearbeiten.</p><a href="/stromtarif?entry_id=${encodeURIComponent(this._selected)}">Verwaltung öffnen</a></ha-card>`;
+    this.message();
+    for(const [id,key] of [['reading-date','date'],['reading-value','value']])this.shadowRoot.querySelector('#'+id).oninput=e=>this._draft[key]=e.target.value;
+    this.shadowRoot.querySelector('#reading-entry').onchange=async e=>{this._selected=e.target.value;this._draft={};this._data=null;this._notice='';await this.refresh();};
+    this.shadowRoot.querySelector('#reload-reading').onclick=()=>this.refresh();
+    this.shadowRoot.querySelector('#reading-form').onsubmit=e=>{e.preventDefault();this.saveReading();};this.controls(this._busy);
+  }
+  async saveReading(){
+    if(this._busy||!this._data)return;const l=this._data.ledger,last=l.readings.at(-1);
+    if(l.tariffs.at(-1).active===false)return;
+    const date=this.shadowRoot.querySelector('#reading-date').value,reading=this.shadowRoot.querySelector('#reading-value').value;
+    this._draft={date,value:reading};
+    if(!date||reading===''||!Number.isFinite(Number(reading))||Number(reading)<0){this._notice='Bitte Datum und einen gültigen Zählerstand eingeben.';this.message();return;}
+    if(date===last.date&&!['manual','automatic'].includes(last.kind)){this._notice='Anfangs- und Grenzstände bitte im Verwaltungs-Panel korrigieren.';this.message();return;}
+    const values={date,reading},operation=date===last.date?'reading_edit':'reading_add';if(operation==='reading_edit')values.index=l.readings.length-1;
+    this._busy=true;this.controls(true);
+    try{await this._hass.callWS({type:'stromtarif/update',entry_id:this._selected,revision:l.revision,operation,values});this._draft={};this._notice='Zählerstand gespeichert.';this._busy=false;await this.refresh();}
+    catch(error){this._notice=error.message||String(error);this.message();}
+    finally{this._busy=false;this.controls(false);}
+  }
+}
+customElements.define('stromtarif-reading-card',StromtarifReadingCard);
+window.customCards.push({type:'stromtarif-reading-card',name:'DEr Stromtarif – Zählerstand erfassen',description:'Aktuellen Zählerstand mit Datum direkt im Dashboard speichern'});

@@ -1,4 +1,4 @@
-# Testbericht – DEr Stromtarif 0.5.0
+# Testbericht – DEr Stromtarif 0.6.0
 
 Geprüft am 11. Oktober 2026 in einer separaten lokalen Testkopie, vor dem Hochladen auf GitHub.
 
@@ -48,6 +48,7 @@ npm install --no-save playwright@1.55.0
 npx playwright install chromium
 node --check custom_components/stromtarif/www/stromtarif-card.js
 node tests/test_card.cjs
+node tests/test_reading_card.cjs
 node --check custom_components/stromtarif/www/stromtarif-panel.js
 node tests/test_panel.cjs
 ```
@@ -66,3 +67,7 @@ Chromium prüft Paneldarstellung, Effektivpreis, Monats-/Quartals-/Jahresauswahl
 Zusätzliche Modelltests prüfen Zahlungs-Verknüpfungen, idempotente manuelle und automatische Verbuchung, Bearbeiten/Löschen, inaktive Tarife, jährliche Periodenwechsel einschließlich Schaltjahr, Rechnungsüberschneidungen, datierte Abschlagänderungen und individuelle Ausnahmen, Migration von Zählernummern, mehrere physische Wechsel, Tarifwechsel am selben Datum, Kosten- und Verbrauchssummen, CSV sowie Neukalibrierung.
 
 Der echte HA-Laufzeittest prüft zusätzlich stündliche Verarbeitung mit Speicherung und Revision, einmalige Abrechnungsbenachrichtigung, Rechnungsbearbeitung, Abschlagänderungen und Zählerwechsel. Chromium prüft die neuen Panel-Aktionen, Formulare, Zahlungsbearbeitung und CSV; Dashboard-Kartentest weiterhin bestanden.
+
+## Eingabekarte 0.6.0
+
+Chromium-Test der neuen Karte bestanden: Anzeige der Zählernummer, Dezimalwerte, neue Ablesung, Korrektur am selben Datum, Schreibrevision, erhaltene Eingaben bei Fehlern und Aktualisieren, Auswahlwechsel, Sperre inaktiver Tarife und Textmaskierung. Alle 63 Python-Tests und bisherigen Browser-Tests weiterhin bestanden.
