@@ -12,7 +12,7 @@ class LedgerEntity(Entity):
         self._attr_unique_id = f"{ledger.entry.entry_id}_{key}"
         self._attr_name = name
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, ledger.entry.entry_id)},
-                                            name=ledger.entry.title, manufacturer="Stromtarif", model="Lokales Tarifbuch")
+                                            name=ledger.entry.title, manufacturer="DEr Stromtarif", model="Lokales Tarifbuch")
 
     async def async_added_to_hass(self):
         self.async_on_remove(async_dispatcher_connect(self.hass, self.ledger.signal, self.async_write_ha_state))
