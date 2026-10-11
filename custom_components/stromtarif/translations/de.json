@@ -13,7 +13,8 @@
           "monthly_fee": "Grundgebühr (EUR/Monat)",
           "interval": "Ableseintervall (Tage)",
           "calendar": "Kalender für ganztägige Termine (optional)",
-          "todo": "To-do-Liste für Ableseaufgaben (optional)"
+          "todo": "To-do-Liste für Ableseaufgaben (optional)",
+          "meter_number": "Zählernummer"
         }
       }
     },
@@ -99,7 +100,8 @@
           "billing_end": "Ende der Abrechnungsperiode",
           "monthly_installment": "Monatlicher Abschlag (EUR)",
           "payment_day": "Zahlungstag (1–31; 0 = Monatsende)",
-          "schedule_mode": "Zahlungsplan"
+          "schedule_mode": "Zahlungsplan",
+          "installment_from": "Abschlag gültig ab"
         }
       },
       "payment": {

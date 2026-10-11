@@ -1,6 +1,6 @@
 # DEr Stromtarif für Home Assistant
 
-Version 0.4.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
+Version 0.5.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
 
 Verwaltet feste Stromtarife, manuelle Zählerstände, Tarifwechsel und Ableseerinnerungen. Alle Daten bleiben in Home Assistant. Mehrere Zähler können als separate Integrationseinträge angelegt werden.
 
@@ -33,7 +33,7 @@ Unter Einstellungen → Geräte & Dienste → DEr Stromtarif → **Konfigurieren
 - **Ableseintervall ändern:** 1 bis 730 Tage. Änderung wirkt ab letzter Ablesung.
 - **Letzte Ablesung korrigieren:** letzte normale Ablesung entfernen und korrekt neu erfassen. Anfangsstand und Tarifgrenzen sind geschützt.
 
-Der Arbeitspreis wird in **EUR/kWh** eingegeben: 30 Cent = **0,30 EUR/kWh**. Grundgebühr monatlich in Euro, inklusive Steuern. Einen Jahresgrundpreis vorher durch 12 teilen. Zählerstände dürfen gleich bleiben, aber nicht sinken. Zählerwechsel / Überlauf sind in dieser Version nicht unterstützt. Nur bereits eingetretene Daten, keine zukünftigen Tarife.
+Der Arbeitspreis wird in **EUR/kWh** eingegeben: 30 Cent = **0,30 EUR/kWh**. Grundgebühr monatlich in Euro, inklusive Steuern. Einen Jahresgrundpreis vorher durch 12 teilen. Zählerstände desselben Zählers dürfen gleich bleiben, aber nicht sinken. Zählerwechsel werden mit getrenntem End-/Anfangsstand erfasst; ein Überlauf desselben Zählers wird nicht automatisch erkannt. Nur bereits eingetretene Daten, keine zukünftigen Tarife.
 
 ## Kosten und Historie
 
@@ -41,7 +41,7 @@ Verbrauch = Differenz der Zählerstände. Jede Differenz wird mit dem im jeweili
 
 Die Grundgebühr wird kalendergenau anteilig berechnet: monatliche Gebühr × erfasste Tage / Tage des betreffenden Monats. Das Anfangsdatum ist eingeschlossen, das Enddatum ausgeschlossen. Beispiel: 1. Januar bis 1. April, 600 kWh × 0,30 EUR + 3 × 12 EUR = **216 EUR**. Lieferanten können andere Tageskonventionen verwenden; die Berechnung ist keine verbindliche Rechnung.
 
-Die Sensoren „… erfasst“ enthalten nur Kosten **bis zur letzten Ablesung**. Unbekannter Verbrauch danach wird nicht geschätzt. „Grundgebühr seit letzter Ablesung“ zeigt separat die inzwischen angefallene Grundgebühr. Beim Gesamtkostensensor stehen Tarif- und Ablesehistorie als Attribute zur Verfügung. Kein separater eigener Webbildschirm nötig.
+Die Sensoren „… erfasst“ enthalten nur Kosten **bis zur letzten Ablesung**. Unbekannter Verbrauch danach wird nicht geschätzt. „Grundgebühr seit letzter Ablesung“ zeigt separat die inzwischen angefallene Grundgebühr. Beim Gesamtkostensensor stehen Tarif- und Ablesehistorie als Attribute zur Verfügung. Die Historie ist auch im Verwaltungs-Panel erreichbar.
 
 ## Erinnerung
 
@@ -51,11 +51,11 @@ Ein Fälligkeits-Binärsensor und das Datum „Nächste Ablesung“ stehen berei
 
 Tarife und Ablesungen werden separat in Home Assistants `.storage` dauerhaft gespeichert; Neustarts und Updates erhalten sie. Home-Assistant-Backups sichern diese Daten. **Das Entfernen des Integrationseintrags löscht dessen Tarifbuch.** Die UI-Optionen enthalten nicht die Historie.
 
-Manuelle Ablesungen werden bewusst nicht als zeitgenaue Statistik ins Energie-Dashboard eingespeist: ein Quartalsverbrauch würde sonst dem Eingabezeitpunkt zugeordnet. Diese Version bietet Kosten- und Verbrauchssensoren für normale Dashboards. Rückwirkende Tarifkorrekturen sind noch nicht implementiert.
+Manuelle Ablesungen werden bewusst nicht als zeitgenaue Statistik ins Energie-Dashboard eingespeist: ein Quartalsverbrauch würde sonst dem Eingabezeitpunkt zugeordnet. Diese Version bietet Kosten- und Verbrauchssensoren für normale Dashboards. Historische Tarifpreise können im Verwaltungs-Panel korrigiert werden.
 
 ## Entwicklungsstand und Tests
 
-Erste Version: vor produktiver Nutzung mit einem Testeintrag prüfen. Berechnungen und Einrichtung werden in einer isolierten Home-Assistant-Core-Testumgebung geprüft. Die Version auf deiner eigenen Installation muss nach dem Update ebenfalls geprüft werden.
+Vor produktiver Nutzung mit einem Testeintrag prüfen. Berechnungen und Einrichtung werden in einer isolierten Home-Assistant-Core-Testumgebung geprüft. Die Version auf deiner eigenen Installation muss nach dem Update ebenfalls geprüft werden.
 
 ```sh
 python -m unittest discover -s tests -v
@@ -66,47 +66,45 @@ Fehler und Erweiterungswünsche: https://github.com/Esteban3571/HA_DEr_Stromtari
 
 Lizenz: MIT.
 
+## Versionsübersicht
 
+Die folgenden Versionsabschnitte sind absteigend geordnet: neueste Version zuerst. Die vollständigen Versionshinweise stehen in [RELEASE_NOTES.md](RELEASE_NOTES.md), die kompakte Historie in [CHANGELOG.md](CHANGELOG.md).
 
-## Neu in 0.2.0
+## Neu in 0.5.0: Zahlungen, Perioden und Zähler
 
-Die ungültige Zahlenfeld-Schrittweite, die den Einrichtungsdialog verhindern konnte, wurde korrigiert. Der interne Domainname und die IDs bleiben gleich; bestehende Daten werden beim Laden um neue Felder ergänzt.
+### Abschläge bestätigen und ändern
 
-### Abschläge, Abrechnung und Prognose
+Im Panel unter **Abrechnung & Zahlungen** einen geplanten Abschlag mit **Als bezahlt markieren** bestätigen. Die Zahlung erscheint unter **Bezahlte Abschläge** und bleibt bei Datum und Betrag bearbeitbar. Ein wiederholter Klick erzeugt keine zweite Zahlung. Bei vorzeitiger Bestätigung wird heute als Zahlungsdatum verwendet, sonst das geplante Datum.
 
-Unter **Konfigurieren → Abrechnung und Abschlag** Beginn, exklusives Enddatum, monatlichen Abschlag und Zahlungstag wählen. Der Beginn kann unabhängig von Ablesedaten gewählt werden; er darf nicht vor dem ersten Eintrag des Tarifbuchs liegen. Standard ist das erste Ablesedatum bis zum gleichen Datum im Folgejahr.
+Unter **Ändern / entfernen** optional die automatische Verbuchung am Fälligkeitstag einschalten. Sie erfasst nur die Zahlung im Tarifbuch und löst keine Überweisung aus. Prüfung beim Start und stündlich; bereits fällige aktivierte Termine werden nachgetragen. Inaktive Tarifbücher buchen nicht automatisch. Beim Löschen einer verknüpften Zahlung wird der Termin wieder offen und seine Automatik ausgeschaltet. Alte manuelle Zahlungen ohne Verknüpfung werden nicht automatisch zugeordnet.
 
-**Zahlung erfassen** bucht tatsächlich bezahlte Beträge; der monatliche Plan bucht keine Zahlungen automatisch. **Letzte Zahlung entfernen** korrigiert die zuletzt eingegebene Zahlung. Alle Zahlungen bleiben in der Historie. Im Zeitraum werden nur Zahlungen mit Datum ab Beginn und vor Ende gezählt.
+**Abschlag ab Datum ändern** erlaubt mehrere zukünftige oder rückwirkende Änderungen. Der neue Betrag gilt für monatliche Fälligkeiten ab dem Datum und bleibt in Folgeperioden gültig. Änderungen sind bearbeitbar und löschbar. Tatsächlich bezahlte Beträge und individuell festgelegte Termin-Ausnahmen bleiben erhalten. **0 EUR** setzt den monatlichen Plan aus. Auch die Finanzkonfiguration bietet **Abschlag gültig ab**.
 
-Sensoren zeigen Periodenkosten, bezahlte und geplante Abschläge, bisherigen Saldo und Kosten-/Saldoprognose. Positiver Saldo = Nachzahlung, negativer = Guthaben. Die Prognose extrapoliert den bisherigen Tagesverbrauch mit dem aktuellen Arbeitspreis und zukünftiger kalendergenauer Grundgebühr. Sie berücksichtigt keine Saisonalität, Preisänderungen in der Zukunft oder Boni. Ohne Verbrauchszeitraum bleibt sie unbekannt. Liegt eine Ablesung über dem Periodenende, wird der Grenzverbrauch linear nach Tagen geschätzt und gekennzeichnet.
+### Regelmäßige Rechnungen
 
-### Dashboard-Karte und CSV
+Das Periodenende unter **Abrechnung und Zahlungsplan ändern** ist der frei wählbare jährliche Stichtag. Auch eine kürzere erste Periode ist möglich. Bei Fälligkeit erscheinen ein Panelhinweis und eine einmalige HA-Benachrichtigung. **Periodenabrechnung erfassen** speichert Rechnungsbetrag und ausgewiesene Nachzahlung oder Guthaben, ohne den Tarif zu schließen oder den Saldo als bezahlt zu buchen.
 
-1. In den Dashboard-Einstellungen unter **Ressourcen** `/stromtarif-card.js?v=0.4.0` als **JavaScript-Modul** hinzufügen (gegebenenfalls erweiterten Modus im Benutzerprofil aktivieren).
-2. Eine manuelle Karte hinzufügen:
+Optional danach die nächste Jahresperiode beginnen; ohne Rechnungserfassung wird die bisherige Periode nicht automatisch verworfen. Frühere Rechnungen können ohne Periodenwechsel erfasst werden. Rechnungen bleiben bearbeitbar und löschbar; ihre Korrektur verändert den aktuellen Periodenplan nicht rückwirkend. Der Stichtag ist der erste Tag der nächsten Periode: Ende 1. Januar bedeutet einschließlich 31. Dezember. Ein 29.-Februar-Stichtag fällt in anderen Jahren auf den 28. Februar.
 
-```yaml
-type: custom:stromtarif-card
-```
+### Zählernummern und Austausch
 
-Die Karte zeigt Tarif, Ablesungen, Fälligkeit, Abschläge, Prognose und Tabellen der gesamten Historie. Bei mehreren Tarifbüchern gibt es eine Auswahl. Optional kann `entry_id` in der Kartenkonfiguration eine Auswahl vorgeben. Aktualisierung alle 30 Sekunden oder per Button. Die Karte benötigt ein **Administratorkonto**; ihre WebSocket-Schnittstellen prüfen diese Berechtigung.
+Neue Tarifbücher benötigen eine Zählernummer. Bestehende Ablesungen bleiben erhalten; im Panel unter **Ablesungen → Zählernummern** die bisherige Nummer nachtragen oder korrigieren. Jede Ablesung behält ihre Zählerzuordnung. Nummern erscheinen in Panel, Karte, CSV und am Zählerstandsensor.
 
-**Historie als CSV herunterladen** exportiert Tarife, Ablesungen und bestätigte Zahlungen direkt im Browser, mit Semikolon-Trennung und UTF-8. Kein öffentlicher Datenexport, keine Dateien mit Tarifdaten unter `/local`. CSV-Textfelder sind gegen Tabellenformeln abgesichert.
+**Zähler wechseln** erfasst Wechseldatum, alten Endstand, neue Nummer und neuen Anfangsstand. Verbrauch wird je Zähler aus seinen eigenen Ständen berechnet; ein niedriger neuer Anfangsstand verursacht keinen negativen Verbrauch. Tarif und Rechnungsperiode bleiben bestehen. Mehrere Wechsel sind möglich. Die automatische Zählerquelle wird ausgeschaltet und muss anschließend neu ausgewählt und kalibriert werden.
 
-### Automatischer Zählersensor
+Wechsel werden ab der letzten vorhandenen Ablesung chronologisch erfasst. Rückwirkliches Einschieben vor bereits erfasste Folgestände ist nicht unterstützt. Die beiden Wechselstände sind am selben Kalendertag gekoppelt; Werte und Datum lassen sich korrigieren, einzelne Grenzstände nicht löschen. Uhrzeiten werden nicht erfasst.
 
-Zuerst eine aktuelle manuelle Ablesung erfassen. Dann unter **Automatischen Zählersensor wählen** einen Sensor aktivieren. Unterstützt werden kumulative Energiesensoren mit `device_class: energy`, `state_class: total` oder `total_increasing` und Einheit **kWh** oder **Wh**. Ein W-Leistungssensor oder zurücksetzender Tagesverbrauch eignet sich nicht.
+## Neu in 0.4.0: Verwaltungs-Panel
 
-Der Sensor wird beim Aktivieren auf den letzten manuellen Stand kalibriert. Ab dem folgenden Kalendertag entstehen automatisch Ablesungen; ein automatischer Tagesstand wird im Tagesverlauf aktualisiert. Änderungen der Sensorentität werden sofort verarbeitet, zusätzlich wird stündlich und beim Neustart geprüft. Datum entspricht dem Tag der Übernahme, nicht einem nachträglich behaupteten Messzeitpunkt.
+Unter **Konfigurieren → Seitenleiste ein-/ausblenden** den optionalen Eintrag **DEr Stromtarif** aktivieren. Er ist für Administratoren sichtbar. Auch ohne Seitenleisten-Eintrag öffnet **Verwaltung öffnen** in der Karte die Oberfläche für das ausgewählte Tarifbuch.
 
-Bei `unknown`, `unavailable`, sinkendem Rohwert oder einer Abweichung hinter den manuellen Stand pausiert die Übernahme und **Zählersensor gestört** zeigt den Fehler. Werte werden nicht auf null gesetzt. Manuelle Erfassung bleibt möglich. Nach einem Reset: aktuellen Stand erfassen und die Quelle erneut auswählen, um neu zu kalibrieren. Fehlende Daten während Ausfällen sind nur bei einem weiterhin kumulativen Sensor beim Wiederkehren nachholbar. Tarifwechsel benötigen weiterhin einen expliziten Grenzzählerstand.
+- Alle Ablesungen als Tabelle, Datum und Zählerstand einzeln korrigieren. Verbrauch, Kosten und Prognose werden neu berechnet. Widersprüchliche Änderungen werden vollständig verworfen.
+- Alle bisherigen Optionen im Panel: Tarifwechsel, historische Tarifpreise, Aktivstatus, Abschluss, Abschlagsplan, Zahlungen, Endabrechnungen, Kalender, To-do-Liste, Ableseintervall und automatische Zählerquelle.
+- Effektiver Strompreis je Tarif inklusive anteiliger Grundgebühr; zusätzlicher Sensor und Anzeige in der Karte. Ohne Verbrauch bleibt der Preis unbekannt.
+- Verbrauch nach **Monat, Quartal oder Jahr**, für alle Tarife oder einen einzelnen Tarif. Zeitanteilig verteilte Werte als Schätzung, unvollständige Perioden als Teilperiode gekennzeichnet.
+- Datenrevision verhindert, dass eine alte Tabellenansicht inzwischen geänderte Zählerstände überschreibt.
 
-### Testworkflow
-
-Änderungen entstehen zuerst in einer separaten lokalen Testkopie. Erst nach bestandenen Prüfungen werden sie auf den Hauptzweig übertragen. Tests der HA-Oberfläche und Laufzeit stehen in `tests/test_runtime.py`; reine Berechnungen in `tests/test_model.py` und `tests/test_features.py`.
-
-Testdetails: [TEST_REPORT.md](TEST_REPORT.md). Versionshistorie: [CHANGELOG.md](CHANGELOG.md).
-
+Bedienung und Grenzen: [PANEL.md](PANEL.md). Nach dem Update Home Assistant neu starten. Die Ressource der Dashboard-Karte auf `/stromtarif-card.js?v=0.5.0` ändern; das Panel wird automatisch registriert.
 
 ## Neu in 0.3.0
 
@@ -136,17 +134,43 @@ Optional eine **Endabrechnung** mit Rechnungsbeginn, tatsächlichem Rechnungsbet
 
 Versionen werden als benannte GitHub-Releases mit Semver-Tag und kurzen deutschen Versionshinweisen veröffentlicht. Der Release-Workflow startet nach einem Push auf `main` und veröffentlicht erst nach erfolgreichen Modell-, HA-Laufzeit- und Kartentests. Er überschreibt kein bestehendes Release.
 
-Falls HACS bisher `main` oder eine kurze Commit-ID anzeigt: Repository öffnen → Menü → **Erneut herunterladen**, Version **v0.3.0** auswählen, herunterladen und Home Assistant neu starten. Je nach HACS-Version kann die Menübezeichnung abweichen. Für die Dashboard-Karte die Ressource auf `/stromtarif-card.js?v=0.4.0` ändern und Browser aktualisieren. HACS-Installation und Darstellung in deiner eigenen Instanz wurden hier nicht getestet.
+Falls HACS bisher `main` oder eine kurze Commit-ID anzeigt: Repository öffnen → Menü → **Erneut herunterladen**, die aktuelle Release-Version auswählen, herunterladen und Home Assistant neu starten. Je nach HACS-Version kann die Menübezeichnung abweichen. Für die Dashboard-Karte die Ressource auf `/stromtarif-card.js?v=0.5.0` ändern und Browser aktualisieren. HACS-Installation und Darstellung in deiner eigenen Instanz wurden hier nicht getestet.
 
+## Neu in 0.2.0
 
-## Neu in 0.4.0: Verwaltungs-Panel
+Die ungültige Zahlenfeld-Schrittweite, die den Einrichtungsdialog verhindern konnte, wurde korrigiert. Der interne Domainname und die IDs bleiben gleich; bestehende Daten werden beim Laden um neue Felder ergänzt.
 
-Unter **Konfigurieren → Seitenleiste ein-/ausblenden** den optionalen Eintrag **DEr Stromtarif** aktivieren. Er ist für Administratoren sichtbar. Auch ohne Seitenleisten-Eintrag öffnet **Verwaltung öffnen** in der Karte die Oberfläche für das ausgewählte Tarifbuch.
+### Abschläge, Abrechnung und Prognose
 
-- Alle Ablesungen als Tabelle, Datum und Zählerstand einzeln korrigieren. Verbrauch, Kosten und Prognose werden neu berechnet. Widersprüchliche Änderungen werden vollständig verworfen.
-- Alle bisherigen Optionen im Panel: Tarifwechsel, historische Tarifpreise, Aktivstatus, Abschluss, Abschlagsplan, Zahlungen, Endabrechnungen, Kalender, To-do-Liste, Ableseintervall und automatische Zählerquelle.
-- Effektiver Strompreis je Tarif inklusive anteiliger Grundgebühr; zusätzlicher Sensor und Anzeige in der Karte. Ohne Verbrauch bleibt der Preis unbekannt.
-- Verbrauch nach **Monat, Quartal oder Jahr**, für alle Tarife oder einen einzelnen Tarif. Zeitanteilig verteilte Werte als Schätzung, unvollständige Perioden als Teilperiode gekennzeichnet.
-- Datenrevision verhindert, dass eine alte Tabellenansicht inzwischen geänderte Zählerstände überschreibt.
+Unter **Konfigurieren → Abrechnung und Abschlag** Beginn, exklusives Enddatum, monatlichen Abschlag und Zahlungstag wählen. Der Beginn kann unabhängig von Ablesedaten gewählt werden; er darf nicht vor dem ersten Eintrag des Tarifbuchs liegen. Standard ist das erste Ablesedatum bis zum gleichen Datum im Folgejahr.
 
-Bedienung und Grenzen: [PANEL.md](PANEL.md). Nach dem Update Home Assistant neu starten. Die Ressource der Dashboard-Karte auf `/stromtarif-card.js?v=0.4.0` ändern; das Panel wird automatisch registriert.
+**Zahlung erfassen** bucht tatsächlich bezahlte Beträge; der monatliche Plan bucht keine Zahlungen automatisch. **Letzte Zahlung entfernen** korrigiert die zuletzt eingegebene Zahlung. Alle Zahlungen bleiben in der Historie. Im Zeitraum werden nur Zahlungen mit Datum ab Beginn und vor Ende gezählt.
+
+Sensoren zeigen Periodenkosten, bezahlte und geplante Abschläge, bisherigen Saldo und Kosten-/Saldoprognose. Positiver Saldo = Nachzahlung, negativer = Guthaben. Die Prognose extrapoliert den bisherigen Tagesverbrauch mit dem aktuellen Arbeitspreis und zukünftiger kalendergenauer Grundgebühr. Sie berücksichtigt keine Saisonalität, Preisänderungen in der Zukunft oder Boni. Ohne Verbrauchszeitraum bleibt sie unbekannt. Liegt eine Ablesung über dem Periodenende, wird der Grenzverbrauch linear nach Tagen geschätzt und gekennzeichnet.
+
+### Dashboard-Karte und CSV
+
+1. In den Dashboard-Einstellungen unter **Ressourcen** `/stromtarif-card.js?v=0.5.0` als **JavaScript-Modul** hinzufügen (gegebenenfalls erweiterten Modus im Benutzerprofil aktivieren).
+2. Eine manuelle Karte hinzufügen:
+
+```yaml
+type: custom:stromtarif-card
+```
+
+Die Karte zeigt Tarif, Ablesungen, Fälligkeit, Abschläge, Prognose und Tabellen der gesamten Historie. Bei mehreren Tarifbüchern gibt es eine Auswahl. Optional kann `entry_id` in der Kartenkonfiguration eine Auswahl vorgeben. Aktualisierung alle 30 Sekunden oder per Button. Die Karte benötigt ein **Administratorkonto**; ihre WebSocket-Schnittstellen prüfen diese Berechtigung.
+
+**Historie als CSV herunterladen** exportiert Tarife, Ablesungen und bestätigte Zahlungen direkt im Browser, mit Semikolon-Trennung und UTF-8. Kein öffentlicher Datenexport, keine Dateien mit Tarifdaten unter `/local`. CSV-Textfelder sind gegen Tabellenformeln abgesichert.
+
+### Automatischer Zählersensor
+
+Zuerst eine aktuelle manuelle Ablesung erfassen. Dann unter **Automatischen Zählersensor wählen** einen Sensor aktivieren. Unterstützt werden kumulative Energiesensoren mit `device_class: energy`, `state_class: total` oder `total_increasing` und Einheit **kWh** oder **Wh**. Ein W-Leistungssensor oder zurücksetzender Tagesverbrauch eignet sich nicht.
+
+Der Sensor wird beim Aktivieren auf den letzten manuellen Stand kalibriert. Ab dem folgenden Kalendertag entstehen automatisch Ablesungen; ein automatischer Tagesstand wird im Tagesverlauf aktualisiert. Änderungen der Sensorentität werden sofort verarbeitet, zusätzlich wird stündlich und beim Neustart geprüft. Datum entspricht dem Tag der Übernahme, nicht einem nachträglich behaupteten Messzeitpunkt.
+
+Bei `unknown`, `unavailable`, sinkendem Rohwert oder einer Abweichung hinter den manuellen Stand pausiert die Übernahme und **Zählersensor gestört** zeigt den Fehler. Werte werden nicht auf null gesetzt. Manuelle Erfassung bleibt möglich. Nach einem Reset: aktuellen Stand erfassen und die Quelle erneut auswählen, um neu zu kalibrieren. Fehlende Daten während Ausfällen sind nur bei einem weiterhin kumulativen Sensor beim Wiederkehren nachholbar. Tarifwechsel benötigen weiterhin einen expliziten Grenzzählerstand.
+
+### Testworkflow
+
+Änderungen entstehen zuerst in einer separaten lokalen Testkopie. Erst nach bestandenen Prüfungen werden sie auf den Hauptzweig übertragen. Tests der HA-Oberfläche und Laufzeit stehen in `tests/test_runtime.py`; reine Berechnungen in `tests/test_model.py` und `tests/test_features.py`.
+
+Testdetails: [TEST_REPORT.md](TEST_REPORT.md). Versionshistorie: [CHANGELOG.md](CHANGELOG.md).

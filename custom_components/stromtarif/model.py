@@ -33,8 +33,12 @@ def make_tariff(data, today):
 
 def initial(data, today):
     tariff = make_tariff(data, today)
-    return {"tariffs": [tariff], "readings": [
-        {"date": tariff["start"], "value": tariff["reading"], "kind": "initial"}],
+    meter_number = str(data.get("meter_number", "")).strip()
+    if "meter_number" in data and not meter_number:
+        raise ValueError("invalid_meter")
+    tariff["meter_id"] = "meter_1"
+    return {"meters": [{"id": "meter_1", "number": meter_number}], "tariffs": [tariff], "readings": [
+        {"date": tariff["start"], "value": tariff["reading"], "kind": "initial", "meter_id": "meter_1", "meter_number": meter_number}],
         "interval": int(data["interval"]), "notified_due": None,
         "reminders": {k: data.get(k) for k in ("calendar", "todo")},}
 
@@ -47,13 +51,14 @@ def add_reading(ledger, value, when, today):
         raise ValueError("date_order")
     if Decimal(value) < Decimal(last["value"]):
         raise ValueError("reading_decreased")
-    ledger["readings"].append({"date": when, "value": value, "kind": "manual"})
+    ledger["readings"].append({"date": when, "value": value, "kind": "manual", "meter_id": last.get("meter_id", "meter_1"), "meter_number": last.get("meter_number", "")})
     ledger["notified_due"] = None
 
 
 def change_tariff(ledger, data, today):
     tariff = make_tariff(data, today)
     last = ledger["readings"][-1]
+    tariff["meter_id"] = last.get("meter_id", "meter_1")
     if tariff["start"] <= ledger["tariffs"][-1]["start"] or tariff["start"] < last["date"]:
         raise ValueError("date_order")
     if tariff["start"] == last["date"]:
@@ -63,6 +68,7 @@ def change_tariff(ledger, data, today):
         add_reading(ledger, tariff["reading"], tariff["start"], today)
         ledger["readings"][-1]["kind"] = "tariff"
     old = ledger["tariffs"][-1]
+    old["end_meter_id"] = last.get("meter_id", "meter_1")
     old["active"] = False
     old.setdefault("end", tariff["start"])
     old.setdefault("end_reading", last["value"] if old["end"] == last["date"] else tariff["reading"])
@@ -111,14 +117,24 @@ def due(ledger):
 
 def migrate(data):
     """Add fields without discarding old tariff or reading data."""
+    data.setdefault("meters", [{"id": "meter_1", "number": ""}])
+    for reading in data["readings"]:
+        reading.setdefault("meter_id", "meter_1")
+        reading.setdefault("meter_number", next(m["number"] for m in data["meters"] if m["id"] == reading["meter_id"]))
+    for tariff in data["tariffs"]:
+        tariff.setdefault("meter_id", next(r["meter_id"] for r in data["readings"] if r["date"] == tariff["start"]))
+        if tariff.get("end"):
+            tariff.setdefault("end_meter_id", next(r["meter_id"] for r in reversed(data["readings"]) if r["date"] == tariff["end"]))
     data.setdefault("revision", 0)
     data.setdefault("show_panel", False)
     data.setdefault("payments", [])
     data.setdefault("monthly_installment", "0")
+    data.setdefault("installment_changes", [])
     data.setdefault("payment_day", 1)
     data.setdefault("billing_start", data["readings"][0]["date"])
     start = date.fromisoformat(data["billing_start"])
     data.setdefault("billing_end", start.replace(year=start.year + 1, day=min(start.day, monthrange(start.year + 1, start.month)[1])).isoformat())
+    data.setdefault("billing_cutoff", data["billing_end"][5:])
     data.setdefault("source", None)
     for i, tariff in enumerate(data["tariffs"]):
         tariff.setdefault("active", i == len(data["tariffs"]) - 1)
@@ -161,12 +177,69 @@ def close_tariff(data, values, today):
             raise ValueError("boundary_mismatch")
     else:
         add_reading(data, values["reading"], end, today)
-    data["readings"][-1]["kind"] = "final"
+    if data["readings"][-1]["kind"] != "meter_start":
+        data["readings"][-1]["kind"] = "final"
     tariff = data["tariffs"][-1]
-    tariff.update(active=False, end=end, end_reading=data["readings"][-1]["value"])
+    tariff.update(active=False, end=end, end_reading=data["readings"][-1]["value"], end_meter_id=data["readings"][-1]["meter_id"])
     if values.get("final_bill"):
         record_bill(data, values, tariff)
     data["notified_due"] = None
+
+
+def rename_meter(data, meter_id, meter_number):
+    meter_number = str(meter_number).strip()
+    if not meter_number or any(m["number"] == meter_number and m["id"] != meter_id for m in data["meters"]):
+        raise ValueError("invalid_meter")
+    meter = next((m for m in data["meters"] if m["id"] == meter_id), None)
+    if meter is None:
+        raise ValueError("invalid_meter")
+    meter["number"] = meter_number
+    for reading in data["readings"]:
+        if reading["meter_id"] == meter_id:
+            reading["meter_number"] = meter_number
+
+
+def replace_meter(data, values, today):
+    when = valid_date(values["date"], today)
+    meter_number = str(values["meter_number"]).strip()
+    last = data["readings"][-1]
+    if not active(data) or not last.get("meter_number") or not meter_number or any(m["number"] == meter_number for m in data["meters"]):
+        raise ValueError("invalid_meter")
+    if when < last["date"] or last["kind"] in {"meter_end", "meter_start", "final"} and when == last["date"]:
+        raise ValueError("date_order")
+    final = number(values["old_reading"])
+    initial_value = number(values["new_reading"])
+    if when == last["date"]:
+        if Decimal(final) != Decimal(last["value"]):
+            raise ValueError("boundary_mismatch")
+    else:
+        add_reading(data, final, when, today)
+    data["readings"][-1]["kind"] = "meter_end"
+    new_id = "meter_" + str(len(data["meters"]) + 1)
+    data["meters"].append({"id": new_id, "number": meter_number})
+    data["readings"].append({"date": when, "value": initial_value, "kind": "meter_start", "meter_id": new_id, "meter_number": meter_number})
+    # A physical replacement needs a newly selected/calibrated source.
+    data["source"] = None
+    data["notified_due"] = None
+    validate_history(data, today)
+
+
+def installment_at(data, when):
+    amount = data["monthly_installment"]
+    for change in sorted(data.get("installment_changes", []), key=lambda row: row["date"]):
+        if change["date"] <= when:
+            amount = change["amount"]
+    return amount
+
+
+def change_installment(data, when, amount):
+    when = date.fromisoformat(str(when)).isoformat()
+    if when < data["readings"][0]["date"]:
+        raise ValueError("billing_dates")
+    amount = number(amount)
+    changes = [r for r in data["installment_changes"] if r["date"] != when]
+    changes.append({"date": when, "amount": amount})
+    data["installment_changes"] = sorted(changes, key=lambda row: row["date"])
 
 
 def payment_schedule(data):
@@ -179,18 +252,23 @@ def payment_schedule(data):
         days = monthrange(cursor.year, cursor.month)[1]
         day = days if data["payment_day"] == 0 else min(data["payment_day"], days)
         when = cursor.replace(day=day).isoformat()
-        if start.isoformat() <= when < end.isoformat() and Decimal(data["monthly_installment"]) > 0:
-            rows[when] = {"key": when, "date": when, "amount": data["monthly_installment"]}
+        amount = installment_at(data, when)
+        if start.isoformat() <= when < end.isoformat() and Decimal(amount) > 0:
+            rows[when] = {"key": when, "date": when, "amount": amount}
         cursor = cursor.replace(day=days) + timedelta(days=1)
     for key, override in data.get("payment_overrides", {}).items():
         rows.pop(key, None)
         if override and start.isoformat() <= override["date"] < end.isoformat():
             rows.pop(override["date"], None)
             rows[key] = {"key": key, **override}
+    paid = {p.get("schedule_key") for p in data["payments"]}
+    for row in rows.values():
+        row["paid"] = row["key"] in paid
+        row.setdefault("auto_pay", False)
     return sorted(rows.values(), key=lambda row: (row["date"], row["key"]))
 
 
-def edit_planned_payment(data, key, when, amount, remove=False):
+def edit_planned_payment(data, key, when, amount, remove=False, auto_pay=False):
     date.fromisoformat(str(key))
     if remove:
         data["payment_overrides"][key] = None
@@ -201,10 +279,37 @@ def edit_planned_payment(data, key, when, amount, remove=False):
         raise ValueError("billing_dates")
     if any(row["date"] == when and row["key"] != key for row in payment_schedule(data)):
         raise ValueError("duplicate_payment_date")
-    data["payment_overrides"][key] = {"date": when, "amount": amount}
+    data["payment_overrides"][key] = {"date": when, "amount": amount, "auto_pay": auto_pay}
 
 
-def configure_finances(data, start, end, installment, payment_day):
+def settle_payment(data, key, today, *, automatic=False):
+    row = next((r for r in payment_schedule(data) if r["key"] == key), None)
+    if row is None:
+        raise ValueError("invalid_input")
+    if row["paid"]:
+        return
+    when = row["date"] if automatic else min(row["date"], today.isoformat())
+    add_payment(data, row["amount"], when, today)
+    data["payments"][-1].update(schedule_key=key, automatic=automatic)
+
+
+def auto_settle_payments(data, today):
+    if active(data):
+        for row in payment_schedule(data):
+            if row["auto_pay"] and not row["paid"] and row["date"] <= today.isoformat():
+                settle_payment(data, row["key"], today, automatic=True)
+
+
+def delete_payment(data, index):
+    payment = data["payments"].pop(index)
+    key = payment.get("schedule_key")
+    if key:
+        row = next((r for r in payment_schedule(data) if r["key"] == key), None)
+        if row:
+            edit_planned_payment(data, key, row["date"], row["amount"], auto_pay=False)
+
+
+def configure_finances(data, start, end, installment, payment_day, installment_from=None):
     start = date.fromisoformat(str(start))
     end = date.fromisoformat(str(end))
     if end <= start or start.isoformat() < data["readings"][0]["date"]:
@@ -212,6 +317,10 @@ def configure_finances(data, start, end, installment, payment_day):
     day = int(payment_day)
     if day != float(payment_day) or not 0 <= day <= 31:
         raise ValueError("invalid_input")
+    if installment_from is not None:
+        change_installment(data, installment_from, installment)
+        installment = data["monthly_installment"]
+    data["billing_cutoff"] = end.strftime("%m-%d")
     data.update(billing_start=start.isoformat(), billing_end=end.isoformat(),
                 monthly_installment=number(installment), payment_day=day)
 
@@ -230,6 +339,8 @@ def period_cost(data, start, end):
     consumption = Decimal(0)
     estimated = False
     for before, after in zip(data["readings"], data["readings"][1:]):
+        if before.get("meter_id") != after.get("meter_id"):
+            continue
         a, b = date.fromisoformat(before["date"]), date.fromisoformat(after["date"])
         tariff = tariff_at(data, before["date"])
         cutoff = date.fromisoformat(tariff.get("end", b.isoformat()))
@@ -267,6 +378,35 @@ def finances(data):
             "paid": paid, "balance": observed_cost-paid, "planned": planned,
             "forecast_cost": forecast, "forecast_balance": None if forecast is None else forecast-planned,
             "partial_period_estimate": estimated, "observed_until": observed_end.isoformat() if observed_end >= start else None}
+
+
+def record_period_bill(data, values, today):
+    """Record the supplier invoice without closing an ongoing contract."""
+    start = valid_date(values["start"], today)
+    end = valid_date(values["end"], today)
+    if start < data["readings"][0]["date"] or end <= start:
+        raise ValueError("billing_dates")
+    if any(b.get("kind") == "period" and start < b["end"] and end > b["start"] for b in data["bills"]):
+        raise ValueError("duplicate_bill")
+    advance = values.get("advance", True)
+    if not isinstance(advance, bool) or (advance and (start != data["billing_start"] or end != data["billing_end"])):
+        raise ValueError("billing_dates")
+    if values["balance_kind"] not in {"payment", "refund"}:
+        raise ValueError("invalid_input")
+    consumption, cost, estimated = period_cost(data, date.fromisoformat(start), date.fromisoformat(end))
+    paid = sum(Decimal(p["amount"]) for p in data["payments"] if start <= p["date"] < end)
+    balance = Decimal(number(values["invoice_balance"]))
+    tariffs = [t["name"] for t in data["tariffs"] if t["start"] < end and t.get("end", "9999-12-31") > start]
+    data["bills"].append({"kind": "period", "tariff": " / ".join(tariffs), "start": start, "end": end,
+        "reading": "", "invoice_total": number(values["invoice_total"]),
+        "balance": str(-balance if values["balance_kind"] == "refund" else balance),
+        "paid_at_recording": str(paid), "consumption_at_recording": consumption,
+        "cost_at_recording": cost, "estimated_at_recording": estimated})
+    if advance:
+        cutoff = date.fromisoformat(end)
+        month, day = map(int, data["billing_cutoff"].split("-"))
+        next_end = date(cutoff.year + 1, month, min(day, monthrange(cutoff.year + 1, month)[1]))
+        data.update(billing_start=end, billing_end=next_end.isoformat())
 
 
 def source_value(state, attributes):
@@ -316,7 +456,7 @@ def csv_export(data):
     """Single tidy ledger export; neutralize formula injection in text fields."""
     out=io.StringIO(newline="")
     writer=csv.writer(out,delimiter=";")
-    writer.writerow(["Typ","Datum","Name/Art","Zaehlerstand_kWh","Arbeitspreis_EUR_kWh","Grundgebuehr_EUR_Monat","Zahlung_EUR","Verbrauch_kWh","Arbeitspreiskosten_EUR","Grundgebuehr_EUR","Gesamtkosten_EUR"])
+    writer.writerow(["Typ","Datum","Name/Art","Zaehlerstand_kWh","Arbeitspreis_EUR_kWh","Grundgebuehr_EUR_Monat","Zahlung_EUR","Verbrauch_kWh","Arbeitspreiskosten_EUR","Grundgebuehr_EUR","Gesamtkosten_EUR","Zaehlernummer"])
     def safe(value):
         text=str(value)
         return "'"+text if text.lstrip().startswith(("=","+","-","@")) else text
@@ -328,20 +468,22 @@ def csv_export(data):
     for p in data["payments"]:
         rows.append((p["date"],["Zahlung",p["date"],"","","","",p["amount"]]))
     for bill in data.get("bills", []):
-        rows.append((bill["end"], ["Endabrechnung", bill["end"], safe(bill["tariff"]), bill["reading"], "", "", "", "", "", "", bill["invoice_total"]]))
+        rows.append((bill["end"], ["Periodenabrechnung" if bill.get("kind") == "period" else "Endabrechnung", bill["end"], safe(bill["tariff"]), bill["reading"], "", "", "", "", "", "", bill["invoice_total"]]))
         rows.append((bill["end"], ["Abrechnungssaldo", bill["end"], "Nachzahlung positiv / Guthaben negativ", "", "", "", bill["balance"]]))
     for row in payment_schedule(data):
         rows.append((row["date"], ["Geplanter Abschlag", row["date"], "", "", "", "", row["amount"]]))
     for _,row in sorted(rows,key=lambda item:item[0]):
-        writer.writerow(row+["","","",""])
+        writer.writerow((row+[""]*11)[:11]+[safe(next((r.get("meter_number", "") for r in data["readings"] if row[0] == "Ablesung" and r["date"] == row[1] and r["kind"] == row[2]), ""))])
     for i in intervals(data):
-        writer.writerow(["Zeitraum",i["to"],safe(i["tariff"]),"","","","",i["consumption"],i["energy_cost"],i["base_cost"],i["total_cost"]])
+        writer.writerow(["Zeitraum",i["to"],safe(i["tariff"]),"","","","",i["consumption"],i["energy_cost"],i["base_cost"],i["total_cost"],safe(i.get("meter_number", ""))])
     return out.getvalue()
 
 
 def intervals(data):
     result=[]
     for before,after in zip(data["readings"],data["readings"][1:]):
+        if before.get("meter_id") != after.get("meter_id"):
+            continue
         tariff=tariff_at(data,before["date"])
         used=Decimal(after["value"])-Decimal(before["value"])
         a, b = date.fromisoformat(before["date"]), date.fromisoformat(after["date"])
@@ -350,7 +492,7 @@ def intervals(data):
         used = used * Decimal(covered) / Decimal((b-a).days)
         energy=used*Decimal(tariff["price"])
         base=fee(tariff["monthly_fee"], a, max(a,stop))
-        result.append({"from":before["date"],"to":after["date"],"tariff":tariff["name"],"consumption":float(used),"energy_cost":float(energy),"base_cost":float(base),"total_cost":float(energy+base)})
+        result.append({"from":before["date"],"to":after["date"],"tariff":tariff["name"],"meter_number":before.get("meter_number", ""),"consumption":float(used),"energy_cost":float(energy),"base_cost":float(base),"total_cost":float(energy+base)})
     return result
 
 
@@ -362,18 +504,26 @@ def validate_history(data, today):
     for i, reading in enumerate(readings):
         valid_date(reading["date"], today)
         number(reading["value"])
-        if i and reading["date"] <= readings[i-1]["date"]:
-            raise ValueError("date_order")
-        if i and Decimal(reading["value"]) < Decimal(readings[i-1]["value"]):
-            raise ValueError("reading_decreased")
-    by_date = {r["date"]: r for r in readings}
+        if reading.get("meter_id") not in {m["id"] for m in data["meters"]}:
+            raise ValueError("invalid_meter")
+        if i:
+            previous = readings[i-1]
+            changed = reading["meter_id"] != previous["meter_id"]
+            if changed:
+                if reading["kind"] != "meter_start" or previous["kind"] != "meter_end" or reading["date"] != previous["date"]:
+                    raise ValueError("meter_boundary")
+            elif reading["date"] <= previous["date"]:
+                raise ValueError("date_order")
+            elif Decimal(reading["value"]) < Decimal(previous["value"]):
+                raise ValueError("reading_decreased")
+    by_date = {(r["date"], r["meter_id"]): r for r in readings}
     for i, tariff in enumerate(data["tariffs"]):
         if i and tariff["start"] <= data["tariffs"][i-1]["start"]:
             raise ValueError("date_order")
-        if tariff["start"] not in by_date or Decimal(tariff["reading"]) != Decimal(by_date[tariff["start"]]["value"]):
+        if (tariff["start"],tariff["meter_id"]) not in by_date or Decimal(tariff["reading"]) != Decimal(by_date[(tariff["start"],tariff["meter_id"])]["value"]):
             raise ValueError("boundary_mismatch")
         if tariff.get("end"):
-            if tariff["end"] < tariff["start"] or tariff["end"] not in by_date:
+            if tariff["end"] < tariff["start"] or (tariff["end"],tariff.get("end_meter_id",tariff["meter_id"])) not in by_date:
                 raise ValueError("boundary_mismatch")
             if i+1 < len(data["tariffs"]) and tariff["end"] > data["tariffs"][i+1]["start"]:
                 raise ValueError("date_order")
@@ -389,16 +539,26 @@ def edit_reading(data, index, when, value, today):
     # Invoice dates are supplier facts. Correct the bill explicitly first.
     if when != old_date and any(old_date in {bill["start"], bill["end"]} for bill in data["bills"]):
         raise ValueError("invoice_boundary")
+    partner = None
+    if old["kind"] in {"meter_end", "meter_start"}:
+        partner = data["readings"][index + (1 if old["kind"] == "meter_end" else -1)]
+        partner["date"] = when
     old.update(date=when, value=value)
     if old["kind"] == "automatic":
         old["kind"] = "manual"
     for tariff in data["tariffs"]:
-        if tariff["start"] == old_date:
+        if tariff["start"] == old_date and tariff.get("meter_id") == old.get("meter_id"):
             tariff.update(start=when, reading=value)
-        if tariff.get("end") == old_date:
+        if tariff.get("end") == old_date and tariff.get("end_meter_id", tariff.get("meter_id")) == old.get("meter_id"):
             tariff.update(end=when, end_reading=value)
+    if partner and when != old_date:
+        for tariff in data["tariffs"]:
+            if tariff["start"] == old_date and tariff.get("meter_id") == partner["meter_id"]:
+                tariff["start"] = when
+            if tariff.get("end") == old_date and tariff.get("end_meter_id",tariff.get("meter_id")) == partner["meter_id"]:
+                tariff["end"] = when
     for bill in data["bills"]:
-        if bill["end"] == old_date:
+        if bill["end"] == old_date and old["kind"] != "meter_start":
             bill["reading"] = value
     if index == 0 and data["billing_start"] == old_date:
         data["billing_start"] = when
@@ -408,7 +568,7 @@ def edit_reading(data, index, when, value, today):
 
 def delete_reading(data, index, today):
     reading = data["readings"][index]
-    if index == 0 or any(reading["date"] in {t["start"], t.get("end")} for t in data["tariffs"]):
+    if index == 0 or reading["kind"] in {"meter_start", "meter_end"} or any(reading["date"] in {t["start"], t.get("end")} for t in data["tariffs"]):
         raise ValueError("cannot_undo")
     data["readings"].pop(index)
     validate_history(data, today)

@@ -10,7 +10,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLATFORMS
-from .model import initial, due, migrate, source_value, ingest_source, active
+from .model import initial, due, migrate, source_value, ingest_source, active, auto_settle_payments
 
 
 class Ledger:
@@ -54,6 +54,12 @@ class Ledger:
         if sample:
             await self.update_source()
         async with self.lock:
+            updated = deepcopy(self.data)
+            auto_settle_payments(updated, dt_util.now().date())
+            if updated != self.data:
+                updated["revision"] = self.data["revision"] + 1
+                await self.store.async_save(updated)
+                self.data = updated
             deadline = due(self.data)
             if active(self.data) and dt_util.now().date() >= deadline and self.data.get("notified_due") != deadline.isoformat():
                 # Notification and marker survive restarts; no repeat every hour.
@@ -67,6 +73,25 @@ class Ledger:
                 updated["notified_due"] = deadline.isoformat()
                 await self.store.async_save(updated)
                 self.data = updated
+        billing_notification = self.notification_id + "_billing"
+        async with self.lock:
+            if active(self.data) and dt_util.now().date().isoformat() >= self.data["billing_end"]:
+                if self.data.get("notified_billing_end") != self.data["billing_end"]:
+                    persistent_notification.async_create(self.hass,
+                        f"Die Rechnungsperiode {self.data['billing_start']} bis {self.data['billing_end']} "
+                        "ist beendet. Lieferantenrechnung im Verwaltungs-Panel unter Abrechnung & Zahlungen erfassen.",
+                        title="DEr Stromtarif: Abrechnung fällig", notification_id=billing_notification)
+                    updated = deepcopy(self.data)
+                    updated["notified_billing_end"] = self.data["billing_end"]
+                    await self.store.async_save(updated)
+                    self.data = updated
+            else:
+                persistent_notification.async_dismiss(self.hass, billing_notification)
+                if self.data.get("notified_billing_end") is not None:
+                    updated = deepcopy(self.data)
+                    updated["notified_billing_end"] = None
+                    await self.store.async_save(updated)
+                    self.data = updated
         await self.reminders.sync()
         async_dispatcher_send(self.hass, self.signal)
 
@@ -142,3 +167,4 @@ async def async_remove_entry(hass, entry):
             title="DEr Stromtarif: Erinnerungen prüfen", notification_id=f"{DOMAIN}_cleanup_{entry.entry_id}")
     await Store(hass, 1, f"{DOMAIN}.{entry.entry_id}").async_remove()
     persistent_notification.async_dismiss(hass, f"{DOMAIN}_{entry.entry_id}")
+    persistent_notification.async_dismiss(hass, f"{DOMAIN}_{entry.entry_id}_billing")

@@ -78,6 +78,8 @@ class LedgerSensor(LedgerEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         data = self.ledger.data
+        if self.key == "reading":
+            return {"zaehlernummer": data["readings"][-1].get("meter_number") or None, "zaehler_id": data["readings"][-1]["meter_id"]}
         if self.key in {"forecast_cost", "forecast_balance", "period_cost", "balance"}:
             return {**finances(data), "prognose": self.key.startswith("forecast"), "positiver_saldo": "Nachzahlung", "negativer_saldo": "Guthaben"}
         if self.key == "total_cost":

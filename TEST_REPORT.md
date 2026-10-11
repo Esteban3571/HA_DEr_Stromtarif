@@ -1,10 +1,10 @@
-# Testbericht – DEr Stromtarif 0.4.0
+# Testbericht – DEr Stromtarif 0.5.0
 
 Geprüft am 11. Oktober 2026 in einer separaten lokalen Testkopie, vor dem Hochladen auf GitHub.
 
 ## Ergebnis
 
-- 38 Python-Tests bestanden: 37 Modelltests und ein durchgehender Laufzeittest mit zahlreichen Prüfungen.
+- 63 Python-Tests bestanden: 62 Modelltests und ein durchgehender Laufzeittest mit zahlreichen Prüfungen.
 - JavaScript-Syntaxprüfung bestanden.
 - Chromium-Browsertest der Dashboard-Karte bestanden: Anzeige, Verbrauchs-/Kostentabelle, sichere Textdarstellung und tatsächlicher CSV-Download.
 - JSON-Dateien und Python-Dateien geprüft.
@@ -48,6 +48,8 @@ npm install --no-save playwright@1.55.0
 npx playwright install chromium
 node --check custom_components/stromtarif/www/stromtarif-card.js
 node tests/test_card.cjs
+node --check custom_components/stromtarif/www/stromtarif-panel.js
+node tests/test_panel.cjs
 ```
 
 
@@ -58,3 +60,9 @@ Zusätzliche Modellprüfungen für Ablesekorrekturen, synchronisierte Tarifgrenz
 Im tatsächlichen HA-Core getestet: Panel registrieren, Seitentitel ein-/ausblenden, Optionsdialog, Administratorprüfung, Schreibbefehle mit Datenrevision, atomare Ablehnung ungültiger Werte und Äquivalente aller vorhandenen Optionsfunktionen. Die Backend-Schreibtests verwenden den tatsächlichen WebSocket-Handler und die tatsächliche Speicherung.
 
 Chromium prüft Paneldarstellung, Effektivpreis, Monats-/Quartals-/Jahresauswahl, einzelne Tabellenänderung, Fehlerdialog mit erhaltenen Eingaben, Seitenleistenoption, Zielauswahl, CSV-Download, sichere Textdarstellung und schmale Ansicht. Die WebSocket-Antworten dieses Browsertests sind simuliert. Ein durchgehender Browsertest innerhalb der vollständigen HA-Anwendungsoberfläche ist nicht durchgeführt worden.
+
+## Neue Funktionen 0.5.0
+
+Zusätzliche Modelltests prüfen Zahlungs-Verknüpfungen, idempotente manuelle und automatische Verbuchung, Bearbeiten/Löschen, inaktive Tarife, jährliche Periodenwechsel einschließlich Schaltjahr, Rechnungsüberschneidungen, datierte Abschlagänderungen und individuelle Ausnahmen, Migration von Zählernummern, mehrere physische Wechsel, Tarifwechsel am selben Datum, Kosten- und Verbrauchssummen, CSV sowie Neukalibrierung.
+
+Der echte HA-Laufzeittest prüft zusätzlich stündliche Verarbeitung mit Speicherung und Revision, einmalige Abrechnungsbenachrichtigung, Rechnungsbearbeitung, Abschlagänderungen und Zählerwechsel. Chromium prüft die neuen Panel-Aktionen, Formulare, Zahlungsbearbeitung und CSV; Dashboard-Kartentest weiterhin bestanden.

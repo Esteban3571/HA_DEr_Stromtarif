@@ -1,5 +1,16 @@
 # Änderungen
 
+## 0.5.0
+
+- Geplante Abschläge per Klick bestätigen und als Zahlung bearbeiten.
+- Optionale automatische Verbuchung je Termin mit Schutz vor Doppelbuchung.
+- Abschlagänderungen mit Gültigkeitsdatum, Historie und Übernahme in Folgeperioden.
+- Wiederkehrende Periodenabrechnungen zum Stichtag ohne Tarifabschluss.
+- Zählernummern je Ablesung und physischer Zählerwechsel ohne Verbrauchssprung.
+- Migration, Zählerquellen-Neukalibrierung und Zählernummern in Tabellen, CSV und Sensorattributen.
+- Dokumentation chronologisch absteigend; Release-Job verwendet nur die aktuelle Version.
+- 63 Python-Tests und Chromium-Panel-/Kartentests.
+
 ## 0.4.0
 
 - Optionalen, dauerhaft konfigurierbaren Seitenleisten-Eintrag mit vollständigem Verwaltungs-Panel ergänzt.

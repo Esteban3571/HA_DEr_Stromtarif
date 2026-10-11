@@ -6,7 +6,8 @@ from homeassistant.components import websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import callback
 from .const import DOMAIN
-from .model import finances, totals, csv_export, due, intervals, active, payment_schedule, tariff_summary, consumption_periods
+from homeassistant.util import dt as dt_util
+from .model import installment_at, finances, totals, csv_export, due, intervals, active, payment_schedule, tariff_summary, consumption_periods
 
 
 @websocket_api.websocket_command({vol.Required("type"):"stromtarif/list"})
@@ -24,7 +25,7 @@ def ws_history(hass, connection, msg):
     if ledger is None or msg["entry_id"]=="frontend_ready":
         connection.send_error(msg["id"],"not_found","Tarifbuch nicht geladen")
         return
-    connection.send_result(msg["id"],{"title":ledger.entry.title,"ledger":deepcopy(ledger.data),"intervals":intervals(ledger.data),"totals":totals(ledger.data),"finances":finances(ledger.data),"due":due(ledger.data).isoformat() if active(ledger.data) else None,"schedule":payment_schedule(ledger.data),"reminder_error":ledger.reminders.error,"source_error":ledger.source_error,"tariff_summaries":[tariff_summary(ledger.data,i) for i in range(len(ledger.data["tariffs"]))]})
+    connection.send_result(msg["id"],{"current_installment":installment_at(ledger.data,dt_util.now().date().isoformat()),"title":ledger.entry.title,"ledger":deepcopy(ledger.data),"intervals":intervals(ledger.data),"totals":totals(ledger.data),"finances":finances(ledger.data),"due":due(ledger.data).isoformat() if active(ledger.data) else None,"schedule":payment_schedule(ledger.data),"reminder_error":ledger.reminders.error,"source_error":ledger.source_error,"tariff_summaries":[tariff_summary(ledger.data,i) for i in range(len(ledger.data["tariffs"]))]})
 
 
 @websocket_api.websocket_command({vol.Required("type"):"stromtarif/export",vol.Required("entry_id"):str})
@@ -66,7 +67,7 @@ async def ws_update(hass, connection, msg):
         code=str(err) if str(err) in ERRORS else "invalid_input"
         connection.send_error(msg["id"],code,ERRORS[code])
         return
-    if msg["operation"]=="source":
+    if msg["operation"] in {"source", "meter_replace"}:
         ledger.bind_source()
     if msg["operation"]=="panel":
         await async_update_panel(hass)
@@ -97,4 +98,4 @@ async def async_update_panel(hass):
     if ledgers:
         await panel_custom.async_register_panel(hass,frontend_url_path="stromtarif",webcomponent_name="stromtarif-panel",
             sidebar_title="DEr Stromtarif" if any(ledger.data["show_panel"] for ledger in ledgers) else None,
-            sidebar_icon="mdi:transmission-tower",module_url="/stromtarif-panel.js?v=0.4.0",require_admin=True)
+            sidebar_icon="mdi:transmission-tower",module_url="/stromtarif-panel.js?v=0.5.0",require_admin=True)

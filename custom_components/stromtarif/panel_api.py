@@ -3,6 +3,9 @@ from . import model as m
 from .reminders import validate_targets
 
 ERRORS = {
+    "invalid_meter": "Bitte eine eindeutige Zählernummer angeben; beim Altbestand zuerst die bisherige Nummer hinterlegen.",
+    "meter_boundary": "Zählerwechsel benötigt Endstand und Anfangsstand am selben Datum.",
+    "duplicate_bill": "Für diesen Zeitraum wurde bereits eine Periodenabrechnung erfasst.",
     "stale_data": "Die Daten wurden inzwischen geändert. Bitte neu laden und die Änderung erneut prüfen.",
     "future_date": "Das Ablesedatum darf nicht in der Zukunft liegen.",
     "date_order": "Die Daten müssen zwischen den benachbarten Ablesungen bzw. Tarifgrenzen liegen.",
@@ -36,6 +39,10 @@ def boolean(values, key):
 def apply(hass, data, operation, values, today):
     if operation == "reading_add":
         m.add_reading(data, values["reading"], values["date"], today)
+    elif operation == "meter_rename":
+        m.rename_meter(data,values["meter_id"],values["meter_number"])
+    elif operation == "meter_replace":
+        m.replace_meter(data,values,today)
     elif operation == "reading_edit":
         m.edit_reading(data, index(values,data,"readings"), values["date"], values["reading"], today)
     elif operation == "reading_delete":
@@ -64,7 +71,7 @@ def apply(hass, data, operation, values, today):
                 tariff["active"] = True
                 tariff.pop("end",None);tariff.pop("end_reading",None)
             else:
-                tariff.update(active=False, end=data["readings"][-1]["date"], end_reading=data["readings"][-1]["value"])
+                tariff.update(active=False, end=data["readings"][-1]["date"], end_reading=data["readings"][-1]["value"], end_meter_id=data["readings"][-1]["meter_id"])
             data["notified_due"] = None
     elif operation == "close":
         m.close_tariff(data,values,today)
@@ -76,8 +83,20 @@ def apply(hass, data, operation, values, today):
     elif operation == "finances":
         if values["schedule_mode"] not in {"monthly","custom"}:
             raise ValueError("invalid_input")
-        m.configure_finances(data,values["billing_start"],values["billing_end"],values["monthly_installment"],values["payment_day"])
+        m.configure_finances(data,values["billing_start"],values["billing_end"],values["monthly_installment"],values["payment_day"],values.get("installment_from"))
         data["schedule_mode"] = values["schedule_mode"]
+    elif operation == "installment_change":
+        if "index" in values:
+            i = index(values,data,"installment_changes")
+            if boolean(values,"remove"):
+                data["installment_changes"].pop(i)
+                return
+            old_date = data["installment_changes"][i]["date"]
+            if old_date != values["date"]:
+                if any(r["date"] == values["date"] for r in data["installment_changes"]):
+                    raise ValueError("invalid_input")
+                data["installment_changes"].pop(i)
+        m.change_installment(data,values["date"],values["amount"])
     elif operation == "payment_add":
         m.add_payment(data,values["amount"],values["date"],today)
     elif operation == "payment_edit":
@@ -85,20 +104,26 @@ def apply(hass, data, operation, values, today):
         amount=m.number(values["amount"])
         if float(amount)<=0:
             raise ValueError("invalid_number")
-        data["payments"][i] = {"date":m.valid_date(values["date"],today),"amount":amount}
+        data["payments"][i].update(date=m.valid_date(values["date"],today),amount=amount)
     elif operation == "payment_delete":
-        data["payments"].pop(index(values,data,"payments"))
+        m.delete_payment(data,index(values,data,"payments"))
     elif operation == "undo_payment":
         if not data["payments"]:
             raise ValueError("cannot_undo")
-        data["payments"].pop()
+        m.delete_payment(data,-1)
+    elif operation == "payment_settle":
+        m.settle_payment(data,values["key"],today)
     elif operation == "planned_payment":
-        m.edit_planned_payment(data,values["key"],values["date"],values["amount"],boolean(values,"remove"))
+        m.edit_planned_payment(data,values["key"],values["date"],values["amount"],boolean(values,"remove"), boolean(values,"auto_pay") if "auto_pay" in values else False)
+    elif operation == "bill_add":
+        m.record_period_bill(data,values,today)
     elif operation == "bill_edit":
         i=index(values,data,"bills")
         start=m.valid_date(values["start"],today);end=m.valid_date(values["end"],today)
         if start>=end:
             raise ValueError("billing_dates")
+        if data["bills"][i].get("kind") == "period" and any(j != i and b.get("kind") == "period" and start < b["end"] and end > b["start"] for j,b in enumerate(data["bills"])):
+            raise ValueError("duplicate_bill")
         balance=m.number(values["invoice_balance"])
         if values["balance_kind"] not in {"payment","refund"}:
             raise ValueError("invalid_input")

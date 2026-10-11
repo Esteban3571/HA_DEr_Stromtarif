@@ -21,7 +21,7 @@ const path=require('node:path');
   assert.match(await page.evaluate(()=>document.querySelector('stromtarif-card').shadowRoot.textContent),/216,00/);
   assert.match(await page.evaluate(()=>document.querySelector('stromtarif-card').shadowRoot.textContent),/600/);
   const text=await page.evaluate(()=>document.querySelector('stromtarif-card').shadowRoot.textContent);
-  assert.match(text,/Inaktiv/);assert.match(text,/Keine Erinnerung/);assert.match(text,/2026-02-17/);assert.match(text,/83,00/);assert.match(text,/Endabrechnungen/);assert.match(text,/210,00/);assert.match(text,/Ziel nicht verfügbar/);
+  assert.match(text,/Inaktiv/);assert.match(text,/Keine Erinnerung/);assert.match(text,/2026-02-17/);assert.match(text,/83,00/);assert.match(text,/Rechnungen/);assert.match(text,/210,00/);assert.match(text,/Ziel nicht verfügbar/);
   const download=page.waitForEvent('download');await page.getByRole('button',{name:'Historie als CSV herunterladen'}).click();
   assert.equal((await download).suggestedFilename(),'stromtarif.csv');
   assert.equal(await page.evaluate(()=>window.exportCalls),1);

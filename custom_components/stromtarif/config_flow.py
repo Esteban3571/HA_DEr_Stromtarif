@@ -7,7 +7,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .model import (initial, add_reading, change_tariff, undo_reading,
-                    configure_finances, add_payment, configure_source, source_value, close_tariff, edit_planned_payment, active)
+                    configure_finances, add_payment, configure_source, source_value, close_tariff, edit_planned_payment, active, installment_at)
 from .reminders import validate_targets
 
 
@@ -49,6 +49,7 @@ def tariff_schema(first=False, reminders=None):
         vol.Required("monthly_fee"): numeric("EUR/Monat"),
     }
     if first:
+        fields[vol.Required("meter_number")] = selector.TextSelector()
         fields[vol.Required("interval", default=90)] = selector.NumberSelector(
             selector.NumberSelectorConfig(min=1, max=730, step=1, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="Tage"))
     fields.update(reminder_fields(reminders))
@@ -131,11 +132,12 @@ class StromtarifOptionsFlow(config_entries.OptionsFlow):
         schema=vol.Schema({
             vol.Required("billing_start",default=data["billing_start"]):selector.DateSelector(),
             vol.Required("billing_end",default=data["billing_end"]):selector.DateSelector(),
-            vol.Required("monthly_installment",default=float(data["monthly_installment"])):numeric("EUR/Monat"),
+            vol.Required("monthly_installment",default=float(installment_at(data,dt_util.now().date().isoformat()))):numeric("EUR/Monat"),
+            vol.Optional("installment_from",default=dt_util.now().date().isoformat()):selector.DateSelector(),
             vol.Required("payment_day",default=data["payment_day"]):selector.NumberSelector(selector.NumberSelectorConfig(min=0,max=31,step=1,mode=selector.NumberSelectorMode.BOX)),
             vol.Required("schedule_mode", default=data["schedule_mode"]): selector.SelectSelector(selector.SelectSelectorConfig(options=[{"value":"monthly", "label":"Monatlich"}, {"value":"custom", "label":"Nur einzelne Termine"}]))})
         def update(data):
-            configure_finances(data,user_input["billing_start"],user_input["billing_end"],user_input["monthly_installment"],user_input["payment_day"])
+            configure_finances(data,user_input["billing_start"],user_input["billing_end"],user_input["monthly_installment"],user_input["payment_day"],user_input.get("installment_from"))
             data["schedule_mode"] = user_input.get("schedule_mode", "monthly")
         return await self.commit(update,"finances",schema,user_input)
 
@@ -149,7 +151,8 @@ class StromtarifOptionsFlow(config_entries.OptionsFlow):
         def undo(data):
             if not data["payments"]:
                 raise ValueError("cannot_undo")
-            data["payments"].pop()
+            from .model import delete_payment
+            delete_payment(data,-1)
         return await self.commit(undo,"undo_payment",vol.Schema({vol.Required("confirm",default=False):selector.BooleanSelector()}),user_input)
 
     async def async_step_source(self,user_input=None):

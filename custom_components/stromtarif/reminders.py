@@ -44,7 +44,7 @@ class ReminderManager:
         if options["payments"]:
             for payment in payment_schedule(data):
                 when = dt_util.parse_date(payment["date"])
-                if when >= dt_util.now().date():
+                if not payment["paid"] and when >= dt_util.now().date():
                     rows["payment:" + payment["key"]] = {"date": when, "summary": f"Abschlag: {name} ({float(payment['amount']):.2f} EUR)", "description": "Geplanter Abschlag; keine gebuchte Zahlung."}
         return rows
 

@@ -1,8 +1,8 @@
-# Verwaltungs-Panel – DEr Stromtarif 0.4.0
+# Verwaltungs-Panel – DEr Stromtarif 0.5.0
 
-Das Verwaltungs-Panel wurde zuerst in einer separaten Testversion umgesetzt und geprüft. Version 0.4.0 veröffentlicht diesen geprüften Stand.
+Das Verwaltungs-Panel wurde zuerst in einer separaten Testversion umgesetzt und geprüft. Version 0.5.0 veröffentlicht diesen geprüften Stand.
 
-## Bedienung nach Installation von Version 0.4.0
+## Bedienung nach Installation von Version 0.5.0
 
 Unter **Einstellungen → Geräte & Dienste → DEr Stromtarif → Konfigurieren → Seitenleiste ein-/ausblenden** die Anzeige aktivieren. Der gemeinsame Eintrag **DEr Stromtarif** erscheint für Administratoren, sobald mindestens ein Tarifbuch die Anzeige aktiviert hat. Die Einstellung ist dauerhaft gespeichert und später änderbar. Auch bei ausgeblendetem Eintrag öffnet **Verwaltung öffnen** in der Dashboard-Karte das Panel und wählt das zugehörige Tarifbuch.
 
@@ -13,6 +13,10 @@ Unter **Einstellungen → Geräte & Dienste → DEr Stromtarif → Konfigurieren
 - **Einstellungen:** Seitenleiste, Ableseintervall, Kalender, To-do-Liste, automatische Zählerquelle und Neukalibrierung.
 - **CSV:** Vorhandener geschützter Export erreichbar.
 
+## Zahlungen, Perioden und Zählerwechsel
+
+Die neuen Aktionen sind unter **Abrechnung & Zahlungen** und **Ablesungen** erreichbar. Geplante Abschläge bestätigen, ihre Automatik optional aktivieren, Monatsbeträge ab Datum ändern und Lieferantenrechnungen erfassen. Unter Ablesungen Zählernummern korrigieren und einen physischen Austausch erfassen. Vollständige Bedienung und Grenzen: [README.md](README.md#neu-in-050-zahlungen-perioden-und-zähler).
+
 ## Berechnung und Schutz der Daten
 
 Monats-/Quartals-/Jahresgrenzen ohne Ablesung erfordern eine zeitanteilige Verteilung des Verbrauchs. Diese Werte sind als **Schätzung** gekennzeichnet, die Balken schraffiert. Unvollständige Perioden sind **Teilperioden**; es wird nicht bis zu ihrem Ende hochgerechnet. Kosten und Verbrauch beziehen sich auf die erfassten Vertragszeiträume. Rechnungsgrenzen müssen zunächst in der Endabrechnung korrigiert oder die Rechnung entfernt werden, bevor eine zugehörige Ablesegrenze verschoben wird.
@@ -21,7 +25,7 @@ Alle Schreibbefehle erfordern ein Administratorkonto. Jede Änderung verwendet e
 
 ## Prüfung am 11. Oktober 2026
 
-- 38 Python-Tests mit Home Assistant Core 2026.2.3 bestanden.
+- 63 Python-Tests mit Home Assistant Core 2026.2.3 bestanden.
 - Tatsächliche HA-Panelregistrierung mit optionalem Seitentitel, Optionsdialog, Administratorprüfung und Datenrevision geprüft.
 - Tatsächliche Backend-Schreibbefehle sowie Äquivalente aller bestehenden Optionsfunktionen geprüft; ungültige Änderungen erhalten die bisherigen Daten.
 - Monats-/Quartals-/Jahres-Summen, Schaltjahr, Tarifauswahl, Preis bei Nullverbrauch und synchronisierte Tarifgrenzen geprüft.
