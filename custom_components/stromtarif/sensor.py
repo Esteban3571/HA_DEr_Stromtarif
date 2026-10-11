@@ -3,9 +3,16 @@ from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .entity import LedgerEntity
-from .model import totals, due, fee
+from .model import totals, due, fee, finances
 
 SENSORS = [
+    ("tariff_name", "Aktueller Tarif", None),
+    ("period_cost", "Kosten Abrechnungsperiode", "EUR"),
+    ("paid", "Bezahlte Abschläge", "EUR"),
+    ("planned", "Geplante Abschläge", "EUR"),
+    ("balance", "Saldo erfasste Kosten minus Zahlungen", "EUR"),
+    ("forecast_cost", "Kostenprognose Abrechnungsperiode", "EUR"),
+    ("forecast_balance", "Prognose Nachzahlung oder Guthaben", "EUR"),
     ("reading", "Zählerstand", "kWh"),
     ("consumption", "Verbrauch erfasst", "kWh"),
     ("energy_cost", "Arbeitspreiskosten erfasst", "EUR"),
@@ -40,6 +47,11 @@ class LedgerSensor(LedgerEntity, SensorEntity):
     @property
     def native_value(self):
         data = self.ledger.data
+        if self.key == "tariff_name":
+            return data["tariffs"][-1]["name"]
+        if self.key in {"period_cost", "paid", "planned", "balance", "forecast_cost", "forecast_balance"}:
+            value=finances(data)[self.key]
+            return None if value is None else round(value,2)
         if self.key == "reading":
             return float(data["readings"][-1]["value"])
         if self.key in {"price", "monthly_fee"}:
@@ -55,6 +67,8 @@ class LedgerSensor(LedgerEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         data = self.ledger.data
+        if self.key in {"forecast_cost", "forecast_balance", "period_cost", "balance"}:
+            return {**finances(data), "prognose": self.key.startswith("forecast"), "positiver_saldo": "Nachzahlung", "negativer_saldo": "Guthaben"}
         if self.key == "total_cost":
             return {"abgerechnet_bis": data["readings"][-1]["date"],
                     "tarife": data["tariffs"], "ablesungen": data["readings"],

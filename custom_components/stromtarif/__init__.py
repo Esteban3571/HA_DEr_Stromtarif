@@ -4,13 +4,13 @@ from copy import deepcopy
 from datetime import timedelta
 
 from homeassistant.components import persistent_notification
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_track_time_interval, async_track_state_change_event
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLATFORMS
-from .model import initial, due
+from .model import initial, due, migrate, source_value, ingest_source
 
 
 class Ledger:
@@ -21,6 +21,8 @@ class Ledger:
         self.data = None
         self.lock = asyncio.Lock()
         self.signal = f"{DOMAIN}.{entry.entry_id}.updated"
+        self.source_error = None
+        self.source_unsub = None
         self.notification_id = f"{DOMAIN}_{entry.entry_id}"
 
     async def load(self):
@@ -28,17 +30,24 @@ class Ledger:
         if self.data is None:
             self.data = initial(self.entry.data, dt_util.now().date())
             await self.store.async_save(self.data)
+        migrate(self.data)
+        await self.store.async_save(self.data)
 
     async def mutate(self, operation):
         async with self.lock:
             updated = deepcopy(self.data)
             operation(updated)
+            if updated == self.data:
+                return
             await self.store.async_save(updated)
             self.data = updated
-        persistent_notification.async_dismiss(self.hass, self.notification_id)
-        await self.tick()
+        if self.data.get("notified_due") is None or due(self.data)>dt_util.now().date():
+            persistent_notification.async_dismiss(self.hass, self.notification_id)
+        await self.tick(sample=False)
 
-    async def tick(self, _now=None):
+    async def tick(self, _now=None, *, sample=True):
+        if sample:
+            await self.update_source()
         async with self.lock:
             deadline = due(self.data)
             if dt_util.now().date() >= deadline and self.data.get("notified_due") != deadline.isoformat():
@@ -56,12 +65,51 @@ class Ledger:
         async_dispatcher_send(self.hass, self.signal)
 
 
+    def bind_source(self):
+        if self.source_unsub:
+            self.source_unsub()
+            self.source_unsub = None
+        self.source_error = None
+        if self.data["source"]:
+            async def changed(event):
+                await self.update_source()
+            self.source_unsub = async_track_state_change_event(self.hass,self.data["source"]["entity_id"],changed)
+
+    def unbind_source(self):
+        if self.source_unsub:
+            self.source_unsub()
+            self.source_unsub = None
+
+    async def update_source(self):
+        source=self.data["source"]
+        if not source:
+            return
+        state=self.hass.states.get(source["entity_id"])
+        try:
+            if state is None:
+                raise ValueError("invalid_source")
+            raw=source_value(state.state,state.attributes)
+            # Mutation uses a locked fresh copy: concurrent sensor events cannot
+            # lose history or overwrite a simultaneous manual reading.
+            await self.mutate(lambda data:ingest_source(data,raw,dt_util.now().date()))
+            self.source_error=None
+        except ValueError as err:
+            self.source_error=str(err)
+            if self.source_error=="source_reset" and not self.data["source"].get("reset_detected"):
+                await self.mutate(lambda data:data["source"].update(reset_detected=True))
+        async_dispatcher_send(self.hass,self.signal)
+
+
 async def async_setup_entry(hass, entry):
     ledger = Ledger(hass, entry)
     await ledger.load()
+    from .frontend import async_setup_frontend
+    await async_setup_frontend(hass)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = ledger
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(async_track_time_interval(hass, ledger.tick, timedelta(hours=1)))
+    ledger.bind_source()
+    entry.async_on_unload(ledger.unbind_source)
     await ledger.tick()
     return True
 

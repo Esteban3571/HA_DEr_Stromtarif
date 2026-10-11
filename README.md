@@ -1,6 +1,6 @@
 # DEr Stromtarif für Home Assistant
 
-Version 0.1.1 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
+Version 0.2.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
 
 Verwaltet feste Stromtarife, manuelle Zählerstände, Tarifwechsel und Ableseerinnerungen. Alle Daten bleiben in Home Assistant. Mehrere Zähler können als separate Integrationseinträge angelegt werden.
 
@@ -51,11 +51,11 @@ Ein Fälligkeits-Binärsensor und das Datum „Nächste Ablesung“ stehen berei
 
 Tarife und Ablesungen werden separat in Home Assistants `.storage` dauerhaft gespeichert; Neustarts und Updates erhalten sie. Home-Assistant-Backups sichern diese Daten. **Das Entfernen des Integrationseintrags löscht dessen Tarifbuch.** Die UI-Optionen enthalten nicht die Historie.
 
-Manuelle Ablesungen werden bewusst nicht als zeitgenaue Statistik ins Energie-Dashboard eingespeist: ein Quartalsverbrauch würde sonst dem Eingabezeitpunkt zugeordnet. Diese Version bietet Kosten- und Verbrauchssensoren für normale Dashboards. Die automatische Übernahme eines zukünftigen Verbrauchssensors und rückwirkende Tarifkorrekturen sind noch nicht implementiert.
+Manuelle Ablesungen werden bewusst nicht als zeitgenaue Statistik ins Energie-Dashboard eingespeist: ein Quartalsverbrauch würde sonst dem Eingabezeitpunkt zugeordnet. Diese Version bietet Kosten- und Verbrauchssensoren für normale Dashboards. Rückwirkende Tarifkorrekturen sind noch nicht implementiert.
 
 ## Entwicklungsstand und Tests
 
-Erste Version: vor produktiver Nutzung mit einem Testeintrag prüfen. Die Berechnungslogik wird automatisiert getestet; ein echter Lauf in einer Home-Assistant-Installation ist noch erforderlich.
+Erste Version: vor produktiver Nutzung mit einem Testeintrag prüfen. Berechnungen und Einrichtung werden in einer isolierten Home-Assistant-Core-Testumgebung geprüft. Die Version auf deiner eigenen Installation muss nach dem Update ebenfalls geprüft werden.
 
 ```sh
 python -m unittest discover -s tests -v
@@ -66,3 +66,43 @@ Fehler und Erweiterungswünsche: https://github.com/Esteban3571/HA_DEr_Stromtari
 
 Lizenz: MIT.
 
+
+
+## Neu in 0.2.0
+
+Die ungültige Zahlenfeld-Schrittweite, die den Einrichtungsdialog verhindern konnte, wurde korrigiert. Der interne Domainname und die IDs bleiben gleich; bestehende Daten werden beim Laden um neue Felder ergänzt.
+
+### Abschläge, Abrechnung und Prognose
+
+Unter **Konfigurieren → Abrechnung und Abschlag** Beginn, exklusives Enddatum, monatlichen Abschlag und Zahlungstag wählen. Der Beginn muss einem vorhandenen Ablesedatum entsprechen. Standard ist das erste Ablesedatum bis zum gleichen Datum im Folgejahr.
+
+**Zahlung erfassen** bucht tatsächlich bezahlte Beträge; der monatliche Plan bucht keine Zahlungen automatisch. **Letzte Zahlung entfernen** korrigiert die zuletzt eingegebene Zahlung. Alle Zahlungen bleiben in der Historie. Im Zeitraum werden nur Zahlungen mit Datum ab Beginn und vor Ende gezählt.
+
+Sensoren zeigen Periodenkosten, bezahlte und geplante Abschläge, bisherigen Saldo und Kosten-/Saldoprognose. Positiver Saldo = Nachzahlung, negativer = Guthaben. Die Prognose extrapoliert den bisherigen Tagesverbrauch mit dem aktuellen Arbeitspreis und zukünftiger kalendergenauer Grundgebühr. Sie berücksichtigt keine Saisonalität, Preisänderungen in der Zukunft oder Boni. Ohne Verbrauchszeitraum bleibt sie unbekannt. Liegt eine Ablesung über dem Periodenende, wird der Grenzverbrauch linear nach Tagen geschätzt und gekennzeichnet.
+
+### Dashboard-Karte und CSV
+
+1. In den Dashboard-Einstellungen unter **Ressourcen** `/stromtarif-card.js?v=0.2.0` als **JavaScript-Modul** hinzufügen (gegebenenfalls erweiterten Modus im Benutzerprofil aktivieren).
+2. Eine manuelle Karte hinzufügen:
+
+```yaml
+type: custom:stromtarif-card
+```
+
+Die Karte zeigt Tarif, Ablesungen, Fälligkeit, Abschläge, Prognose und Tabellen der gesamten Historie. Bei mehreren Tarifbüchern gibt es eine Auswahl. Optional kann `entry_id` in der Kartenkonfiguration eine Auswahl vorgeben. Aktualisierung alle 30 Sekunden oder per Button. Die Karte benötigt ein **Administratorkonto**; ihre WebSocket-Schnittstellen prüfen diese Berechtigung.
+
+**Historie als CSV herunterladen** exportiert Tarife, Ablesungen und bestätigte Zahlungen direkt im Browser, mit Semikolon-Trennung und UTF-8. Kein öffentlicher Datenexport, keine Dateien mit Tarifdaten unter `/local`. CSV-Textfelder sind gegen Tabellenformeln abgesichert.
+
+### Automatischer Zählersensor
+
+Zuerst eine aktuelle manuelle Ablesung erfassen. Dann unter **Automatischen Zählersensor wählen** einen Sensor aktivieren. Unterstützt werden kumulative Energiesensoren mit `device_class: energy`, `state_class: total` oder `total_increasing` und Einheit **kWh** oder **Wh**. Ein W-Leistungssensor oder zurücksetzender Tagesverbrauch eignet sich nicht.
+
+Der Sensor wird beim Aktivieren auf den letzten manuellen Stand kalibriert. Ab dem folgenden Kalendertag entstehen automatisch Ablesungen; ein automatischer Tagesstand wird im Tagesverlauf aktualisiert. Änderungen der Sensorentität werden sofort verarbeitet, zusätzlich wird stündlich und beim Neustart geprüft. Datum entspricht dem Tag der Übernahme, nicht einem nachträglich behaupteten Messzeitpunkt.
+
+Bei `unknown`, `unavailable`, sinkendem Rohwert oder einer Abweichung hinter den manuellen Stand pausiert die Übernahme und **Zählersensor gestört** zeigt den Fehler. Werte werden nicht auf null gesetzt. Manuelle Erfassung bleibt möglich. Nach einem Reset: aktuellen Stand erfassen und die Quelle erneut auswählen, um neu zu kalibrieren. Fehlende Daten während Ausfällen sind nur bei einem weiterhin kumulativen Sensor beim Wiederkehren nachholbar. Tarifwechsel benötigen weiterhin einen expliziten Grenzzählerstand.
+
+### Testworkflow
+
+Änderungen entstehen zuerst in einer separaten lokalen Testkopie. Erst nach bestandenen Prüfungen werden sie auf den Hauptzweig übertragen. Tests der HA-Oberfläche und Laufzeit stehen in `tests/test_runtime.py`; reine Berechnungen in `tests/test_model.py` und `tests/test_features.py`.
+
+Testdetails: [TEST_REPORT.md](TEST_REPORT.md). Versionshistorie: [CHANGELOG.md](CHANGELOG.md).

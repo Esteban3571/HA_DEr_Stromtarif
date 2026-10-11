@@ -1,13 +1,15 @@
 {
   "domain": "stromtarif",
   "name": "DEr Stromtarif",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "codeowners": [
     "@Esteban3571"
   ],
   "config_flow": true,
   "dependencies": [
-    "persistent_notification"
+    "persistent_notification",
+    "http",
+    "websocket_api"
   ],
   "documentation": "https://github.com/Esteban3571/HA_DEr_Stromtarif",
   "issue_tracker": "https://github.com/Esteban3571/HA_DEr_Stromtarif/issues",

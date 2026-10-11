@@ -33,7 +33,11 @@
           "reading": "Record meter reading",
           "tariff": "Change tariff",
           "interval": "Change reading interval",
-          "undo": "Correct last reading"
+          "undo": "Correct last reading",
+          "finances": "Abrechnung und Abschlag",
+          "payment": "Zahlung erfassen",
+          "undo_payment": "Letzte Zahlung entfernen",
+          "source": "Automatischen Zählersensor wählen"
         }
       },
       "reading": {
@@ -68,6 +72,39 @@
         "data": {
           "confirm": "Remove the last reading"
         }
+      },
+      "finances": {
+        "title": "Abrechnung und Abschlag",
+        "description": "Beginn muss einem vorhandenen Ablesedatum entsprechen. Ende ist exklusiv. Zahlungen am gewählten Monatstag sind geplant, nicht als bezahlt gebucht.",
+        "data": {
+          "billing_start": "Beginn der Abrechnungsperiode",
+          "billing_end": "Ende der Abrechnungsperiode",
+          "monthly_installment": "Monatlicher Abschlag (EUR)",
+          "payment_day": "Zahlungstag im Monat (1–28)"
+        }
+      },
+      "payment": {
+        "title": "Tatsächlich bezahlten Abschlag erfassen",
+        "description": "Nur bestätigte Zahlungen buchen. Mehrere Zahlungen am gleichen Datum sind erlaubt.",
+        "data": {
+          "date": "Zahlungsdatum",
+          "amount": "Bezahlter Betrag (EUR)"
+        }
+      },
+      "undo_payment": {
+        "title": "Letzte Zahlung entfernen",
+        "description": "Entfernt die zuletzt eingegebene Zahlung, unabhängig vom Zahlungsdatum.",
+        "data": {
+          "confirm": "Letzte Zahlung wirklich entfernen"
+        }
+      },
+      "source": {
+        "title": "Automatischen Zählersensor wählen",
+        "description": "Zuerst eine aktuelle manuelle Ablesung erfassen. Ein kumulativer Energiesensor in kWh oder Wh wird auf diesen Stand kalibriert; frühere fehlende Verbräuche werden nicht geschätzt. Deaktivieren ermöglicht manuelle Erfassung. Bei einem Zählerreset hier erneut kalibrieren.",
+        "data": {
+          "enabled": "Automatische Übernahme aktivieren",
+          "entity_id": "Kumulativer Zählersensor"
+        }
       }
     },
     "error": {
@@ -77,7 +114,11 @@
       "boundary_mismatch": "A same-day tariff change must use the exact last meter reading.",
       "invalid_number": "Enter a finite, nonnegative number.",
       "cannot_undo": "Initial readings and tariff boundaries cannot be removed.",
-      "invalid_input": "Please check your input."
+      "invalid_input": "Please check your input.",
+      "billing_dates": "Beginn muss ein Ablesedatum sein und Ende muss danach liegen.",
+      "invalid_source": "Bitte einen verfügbaren kumulativen Energiesensor in Wh/kWh mit state_class total oder total_increasing wählen.",
+      "source_reset": "Zählersensor zurückgesetzt. Aktuellen Stand manuell erfassen und Sensor erneut kalibrieren.",
+      "source_behind": "Sensor liegt hinter dem manuell erfassten Stand. Aktuelle Ablesung prüfen und Sensor erneut kalibrieren."
     }
   }
 }

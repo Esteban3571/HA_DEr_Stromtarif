@@ -6,7 +6,8 @@ from .model import due
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
-    async_add_entities([ReadingDue(hass.data[DOMAIN][entry.entry_id], "reading_due", "Ablesung fällig")])
+    ledger=hass.data[DOMAIN][entry.entry_id]
+    async_add_entities([ReadingDue(ledger,"reading_due","Ablesung fällig"),SourceProblem(ledger,"source_problem","Zählersensor gestört")])
 
 
 class ReadingDue(LedgerEntity, BinarySensorEntity):
@@ -15,3 +16,15 @@ class ReadingDue(LedgerEntity, BinarySensorEntity):
     @property
     def is_on(self):
         return dt_util.now().date() >= due(self.ledger.data)
+
+
+class SourceProblem(LedgerEntity, BinarySensorEntity):
+    _attr_icon="mdi:alert-circle-outline"
+
+    @property
+    def is_on(self):
+        return bool(self.ledger.source_error)
+
+    @property
+    def extra_state_attributes(self):
+        return {"fehler":self.ledger.source_error,"quelle":self.ledger.data.get("source")}
