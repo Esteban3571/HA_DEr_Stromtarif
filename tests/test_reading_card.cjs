@@ -7,6 +7,10 @@ const path=require('node:path');
   const page=await browser.newPage({viewport:{width:390,height:844}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.setContent('<stromtarif-reading-card></stromtarif-reading-card>');
   await page.addScriptTag({path:path.join(__dirname,'../custom_components/stromtarif/www/stromtarif-card.js')});
+  // Simulate auto-loaded script plus an existing manual resource URL.
+  await page.addScriptTag({path:path.join(__dirname,'../custom_components/stromtarif/www/stromtarif-card.js')});
+  assert.deepEqual(await page.evaluate(()=>window.customCards.map(c=>c.type)),['stromtarif-card','stromtarif-reading-card']);
+  assert.deepEqual(await page.evaluate(()=>customElements.get('stromtarif-reading-card').getStubConfig()),{title:'Zählerstand erfassen'});
   await page.evaluate(()=>{
    window.writes=[];window.reject=false;
    const card=document.querySelector('stromtarif-reading-card');card.setConfig({type:'custom:stromtarif-reading-card'});

@@ -1,3 +1,4 @@
+(()=>{
 /* DEr Stromtarif dashboard card; data stays in authenticated HA WebSocket. */
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 class StromtarifCard extends HTMLElement {
@@ -6,6 +7,7 @@ class StromtarifCard extends HTMLElement {
   set hass(hass) { this._hass=hass; if (this.isConnected && !this._busy && Date.now()-(this._last||0)>30000) this.refresh(); }
   connectedCallback() { this._timer=setInterval(()=>this.refresh(),30000); if(this._hass)this.refresh(); }
   disconnectedCallback() { clearInterval(this._timer); }
+  static getStubConfig(){return {}; }
   getCardSize() { return 8; }
   async refresh() {
     if(!this._hass||this._busy||!this.isConnected)return;
@@ -53,9 +55,9 @@ class StromtarifCard extends HTMLElement {
     this.shadowRoot.querySelector('#export').onclick=()=>this.exportCSV();this.shadowRoot.querySelector('#refresh').onclick=()=>this.refresh();
   }
 }
-customElements.define('stromtarif-card',StromtarifCard);
+if(!customElements.get('stromtarif-card'))customElements.define('stromtarif-card',StromtarifCard);
 window.customCards=window.customCards||[];
-window.customCards.push({type:'stromtarif-card',name:'DEr Stromtarif',description:'Tarife, Ablesungen, Abschläge, Prognose und CSV-Export'});
+if(!window.customCards.some(c=>c.type==='stromtarif-card'))window.customCards.push({type:'stromtarif-card',name:'DEr Stromtarif',description:'Tarife, Ablesungen, Abschläge, Prognose und CSV-Export'});
 
 /* Compact reading input; shares the authenticated, revision-protected ledger API. */
 class StromtarifReadingCard extends HTMLElement {
@@ -63,6 +65,7 @@ class StromtarifReadingCard extends HTMLElement {
   setConfig(config){this._config=config;this._selected=config.entry_id||null;this._data=null;this._draft={};if(this._hass&&this.isConnected)this.refresh();}
   set hass(value){this._hass=value;if(this.isConnected&&!this._data&&!this._busy)this.refresh();}
   connectedCallback(){if(this._hass&&!this._data)this.refresh();}
+  static getStubConfig(){return {title:'Zählerstand erfassen'};}
   getCardSize(){return 4;}
   today(){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:this._hass?.config?.time_zone||'Europe/Berlin',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());return ['year','month','day'].map(k=>parts.find(p=>p.type===k).value).join('-');}
   async refresh(){
@@ -105,5 +108,7 @@ class StromtarifReadingCard extends HTMLElement {
     finally{this._busy=false;this.controls(false);}
   }
 }
-customElements.define('stromtarif-reading-card',StromtarifReadingCard);
-window.customCards.push({type:'stromtarif-reading-card',name:'DEr Stromtarif – Zählerstand erfassen',description:'Aktuellen Zählerstand mit Datum direkt im Dashboard speichern'});
+if(!customElements.get('stromtarif-reading-card'))customElements.define('stromtarif-reading-card',StromtarifReadingCard);
+if(!window.customCards.some(c=>c.type==='stromtarif-reading-card'))window.customCards.push({type:'stromtarif-reading-card',name:'DEr Stromtarif – Zählerstand erfassen',description:'Aktuellen Zählerstand mit Datum direkt im Dashboard speichern'});
+
+})();

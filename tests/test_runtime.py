@@ -137,6 +137,18 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
     flow=await hass.config_entries.flow.async_init('stromtarif',context={'source':'user'})
     created=await hass.config_entries.flow.async_configure(flow['flow_id'],user_input=flow['data_schema']({'name':'Setup','meter_number':'SETUP-123','date':yesterday.isoformat(),'reading':50,'price':.3,'monthly_fee':10,'interval':30,'calendar':'calendar.tarife','todo':'todo.ablesungen'}))
     self.assertEqual(created['type'],'create_entry');await hass.async_block_till_done()
+    # Card module registers when the HA frontend finishes loading, once for all tariff books.
+    from homeassistant.components import frontend
+    from homeassistant.const import EVENT_COMPONENT_LOADED
+    from hashlib import sha256
+    module_urls=hass.data[frontend.DATA_EXTRA_MODULE_URL]
+    hass.bus.async_fire(EVENT_COMPONENT_LOADED,{'component':'frontend'})
+    await hass.async_block_till_done()
+    digest=sha256((Path(directory)/'custom_components/stromtarif/www/stromtarif-card.js').read_bytes()).hexdigest()[:12]
+    card_urls={url for url in module_urls.urls if url.startswith('/stromtarif-card.js')}
+    self.assertEqual(card_urls,{f'/stromtarif-card.js?v={digest}'})
+    hass.bus.async_fire(EVENT_COMPONENT_LOADED,{'component':'frontend'})
+    await hass.async_block_till_done();self.assertEqual(len([url for url in module_urls.urls if url.startswith('/stromtarif-card.js')]),1)
     setup=hass.data['stromtarif'][created['result'].entry_id]
     self.assertIsNone(setup.reminders.error);self.assertEqual(setup.data['reminders']['calendar'],'calendar.tarife')
     self.assertEqual(len(todo.todo_items),2)

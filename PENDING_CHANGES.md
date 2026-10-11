@@ -16,3 +16,13 @@ Noch kein neues Release. Änderungen im Testzweig sammeln; Veröffentlichung ers
 72 Python-Tests bestanden, einschließlich echtem Laufzeittest mit Home Assistant Core 2026.2.3 und Administrator-/WebSocket-Prüfungen. Drei Chromium-Testprogramme bestanden (Panel mit simuliertem WebSocket-Backend, bestehende Karte, Eingabekarte). Neue Fälle prüfen unabhängige Rechnungszeiträume, fehlende Rechnungen, unvollständige Entwürfe, unbekannte Kosten, Schätzungen, Konflikte, veraltete Entwürfe und Wiederherstellung.
 
 Die aktuelle Home-Assistant-Version und die konkrete Nutzerinstallation wurden nicht geprüft. Hauptzweig, Versionsnummer und bestehendes Release 0.6.0 bleiben unverändert.
+
+## Dashboard-Karten: Auffindbarkeit
+
+Release 0.6.0 enthält beide Karten im ausgelieferten JavaScript. Der bisherige Stand lädt die Dashboard-Ressource jedoch nur bei manuellem Eintrag; die Integration selbst registriert lediglich die URL als statischen Pfad.
+
+Im Teststand wird das Kartenmodul nun über Home Assistants Frontend automatisch geladen, auch wenn das Frontend erst später startet. Ein Fingerabdruck des ausgelieferten Skripts in der URL vermeidet eine veraltete Ressource nach Updates. Beide Karten haben eine Standardkonfiguration für die Kartenauswahl. Mehrfaches Laden (bestehende manuelle Ressource plus automatischer Eintrag) erzeugt keine doppelten Karteneinträge oder Custom-Element-Registrierungen.
+
+Erneut 72 Python-Tests und drei Chromium-Programme bestanden. Der HA-Laufzeittest prüft den tatsächlichen Eintrag im Frontend-Modulmanager; Chromium prüft doppelte Skriptausführung und Kartenauswahl-Metadaten. Der Kartenpicker von Home Assistant selbst und die konkrete Nutzerinstallation wurden nicht getestet.
+
+Für bereits installiertes 0.6.0 weiterhin `/stromtarif-card.js?v=0.6.0` als JavaScript-Modul unter Dashboard-Ressourcen eintragen bzw. vorhandenen Eintrag aktualisieren, Browser neu laden und `custom:stromtarif-reading-card` hinzufügen. Die Korrektur bleibt im Testzweig, kein Release wurde erstellt.

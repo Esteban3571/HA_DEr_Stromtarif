@@ -5,6 +5,7 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import callback
+from homeassistant.const import EVENT_COMPONENT_LOADED
 from .const import DOMAIN
 from homeassistant.util import dt as dt_util
 from .model import installment_at, finances, totals, csv_export, due, intervals, active, payment_schedule, tariff_summary, consumption_periods
@@ -48,6 +49,21 @@ async def async_setup_frontend(hass):
     for command in (ws_list,ws_history,ws_export,ws_update,ws_periods,ws_history_preview):
         websocket_api.async_register_command(hass,command)
     data["frontend_ready"]=True
+    # Load the cards even when no Lovelace resource was added manually.
+    from homeassistant.components import frontend
+    from hashlib import sha256
+    card_path=Path(__file__).parent/"www"/"stromtarif-card.js"
+    digest=sha256(await hass.async_add_executor_job(card_path.read_bytes)).hexdigest()[:12]
+    url=f"/stromtarif-card.js?v={digest}"
+    if frontend.DATA_EXTRA_MODULE_URL in hass.data:
+        frontend.add_extra_js_url(hass,url)
+    else:
+        @callback
+        def frontend_loaded(event):
+            if event.data.get("component") == "frontend":
+                frontend.add_extra_js_url(hass,url)
+                unsubscribe()
+        unsubscribe=hass.bus.async_listen(EVENT_COMPONENT_LOADED,frontend_loaded)
 
 
 @websocket_api.websocket_command({vol.Required("type"): "stromtarif/update", vol.Required("entry_id"): str,
