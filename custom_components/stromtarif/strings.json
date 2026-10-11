@@ -1,0 +1,83 @@
+{
+  "title": "Stromtarif",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Stromtarif einrichten",
+        "description": "Arbeitspreis in Euro je kWh (z. B. 0,30), monatliche Grundgebühr in Euro und Anfangszählerstand erfassen. Preise inklusive Steuern eingeben.",
+        "data": {
+          "name": "Tarifname / Anbieter",
+          "date": "Datum",
+          "reading": "Zählerstand (kWh)",
+          "price": "Arbeitspreis (EUR/kWh)",
+          "monthly_fee": "Grundgebühr (EUR/Monat)",
+          "interval": "Ableseintervall (Tage)"
+        }
+      }
+    },
+    "error": {
+      "future_date": "Das Datum darf nicht in der Zukunft liegen.",
+      "date_order": "Das Datum muss nach der letzten Ablesung bzw. dem bisherigen Tarifstart liegen.",
+      "reading_decreased": "Der Zählerstand darf nicht sinken. Ein Zählerwechsel wird noch nicht unterstützt.",
+      "boundary_mismatch": "Beim Tarifwechsel am letzten Ablesedatum muss der Zählerstand identisch sein.",
+      "invalid_number": "Bitte eine endliche, nicht negative Zahl eingeben.",
+      "cannot_undo": "Diese Ablesung ist ein Tarifstart oder die erste Ablesung und kann nicht entfernt werden.",
+      "invalid_input": "Bitte die Eingaben prüfen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Stromtarif verwalten",
+        "menu_options": {
+          "reading": "Ablesung erfassen",
+          "tariff": "Neuen Tarif hinterlegen",
+          "interval": "Ableseintervall ändern",
+          "undo": "Letzte Ablesung korrigieren"
+        }
+      },
+      "reading": {
+        "title": "Zählerstand erfassen",
+        "description": "Den kumulativen Stand des Stromzählers eingeben, nicht den Verbrauch.",
+        "data": {
+          "date": "Datum",
+          "reading": "Zählerstand (kWh)"
+        }
+      },
+      "tariff": {
+        "title": "Tarif wechseln",
+        "description": "Der Anfangszählerstand schließt den alten Tarif ab. Datum = erster Tag des neuen Tarifs. Bestehende Preise bleiben in der Historie erhalten.",
+        "data": {
+          "name": "Tarifname / Anbieter",
+          "date": "Datum",
+          "reading": "Zählerstand (kWh)",
+          "price": "Arbeitspreis (EUR/kWh)",
+          "monthly_fee": "Grundgebühr (EUR/Monat)"
+        }
+      },
+      "interval": {
+        "title": "Ableseintervall",
+        "description": "Die nächste Erinnerung wird ab der letzten Ablesung berechnet.",
+        "data": {
+          "interval": "Ableseintervall (Tage)"
+        }
+      },
+      "undo": {
+        "title": "Letzte Ablesung korrigieren",
+        "description": "Die letzte normale Ablesung entfernen und danach korrekt neu erfassen. Tarifgrenzen können nicht entfernt werden.",
+        "data": {
+          "confirm": "Letzte Ablesung wirklich entfernen"
+        }
+      }
+    },
+    "error": {
+      "future_date": "Das Datum darf nicht in der Zukunft liegen.",
+      "date_order": "Das Datum muss nach der letzten Ablesung bzw. dem bisherigen Tarifstart liegen.",
+      "reading_decreased": "Der Zählerstand darf nicht sinken. Ein Zählerwechsel wird noch nicht unterstützt.",
+      "boundary_mismatch": "Beim Tarifwechsel am letzten Ablesedatum muss der Zählerstand identisch sein.",
+      "invalid_number": "Bitte eine endliche, nicht negative Zahl eingeben.",
+      "cannot_undo": "Diese Ablesung ist ein Tarifstart oder die erste Ablesung und kann nicht entfernt werden.",
+      "invalid_input": "Bitte die Eingaben prüfen."
+    }
+  }
+}

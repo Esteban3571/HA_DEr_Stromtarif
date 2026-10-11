@@ -1,0 +1,83 @@
+{
+  "title": "Stromtarif",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up electricity tariff",
+        "description": "Enter the initial meter reading, price in EUR/kWh and monthly standing charge. Use prices including taxes.",
+        "data": {
+          "name": "Tariff / supplier name",
+          "date": "Date",
+          "reading": "Meter reading (kWh)",
+          "price": "Price (EUR/kWh)",
+          "monthly_fee": "Standing charge (EUR/month)",
+          "interval": "Reading interval (days)"
+        }
+      }
+    },
+    "error": {
+      "future_date": "Dates cannot be in the future.",
+      "date_order": "Date must follow the last reading or tariff start.",
+      "reading_decreased": "Meter readings cannot decrease. Meter replacement is not yet supported.",
+      "boundary_mismatch": "A same-day tariff change must use the exact last meter reading.",
+      "invalid_number": "Enter a finite, nonnegative number.",
+      "cannot_undo": "Initial readings and tariff boundaries cannot be removed.",
+      "invalid_input": "Please check your input."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage electricity tariff",
+        "menu_options": {
+          "reading": "Record meter reading",
+          "tariff": "Change tariff",
+          "interval": "Change reading interval",
+          "undo": "Correct last reading"
+        }
+      },
+      "reading": {
+        "title": "Record meter reading",
+        "description": "Enter the cumulative meter reading, not consumption.",
+        "data": {
+          "date": "Date",
+          "reading": "Meter reading (kWh)"
+        }
+      },
+      "tariff": {
+        "title": "Change tariff",
+        "description": "The initial reading closes the previous tariff. The date is the first day of the new tariff.",
+        "data": {
+          "name": "Tariff / supplier name",
+          "date": "Date",
+          "reading": "Meter reading (kWh)",
+          "price": "Price (EUR/kWh)",
+          "monthly_fee": "Standing charge (EUR/month)"
+        }
+      },
+      "interval": {
+        "title": "Reading interval",
+        "description": "Calculated from the last meter reading.",
+        "data": {
+          "interval": "Reading interval (days)"
+        }
+      },
+      "undo": {
+        "title": "Correct last reading",
+        "description": "Remove the last ordinary reading, then enter its replacement. Initial readings and tariff boundaries are protected.",
+        "data": {
+          "confirm": "Remove the last reading"
+        }
+      }
+    },
+    "error": {
+      "future_date": "Dates cannot be in the future.",
+      "date_order": "Date must follow the last reading or tariff start.",
+      "reading_decreased": "Meter readings cannot decrease. Meter replacement is not yet supported.",
+      "boundary_mismatch": "A same-day tariff change must use the exact last meter reading.",
+      "invalid_number": "Enter a finite, nonnegative number.",
+      "cannot_undo": "Initial readings and tariff boundaries cannot be removed.",
+      "invalid_input": "Please check your input."
+    }
+  }
+}
