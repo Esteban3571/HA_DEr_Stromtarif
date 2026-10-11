@@ -1,6 +1,6 @@
 # DEr Stromtarif für Home Assistant
 
-Version 0.3.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
+Version 0.4.0 – lokale HACS Custom Integration, keine separate App / kein Docker-Add-on.
 
 Verwaltet feste Stromtarife, manuelle Zählerstände, Tarifwechsel und Ableseerinnerungen. Alle Daten bleiben in Home Assistant. Mehrere Zähler können als separate Integrationseinträge angelegt werden.
 
@@ -82,7 +82,7 @@ Sensoren zeigen Periodenkosten, bezahlte und geplante Abschläge, bisherigen Sal
 
 ### Dashboard-Karte und CSV
 
-1. In den Dashboard-Einstellungen unter **Ressourcen** `/stromtarif-card.js?v=0.3.0` als **JavaScript-Modul** hinzufügen (gegebenenfalls erweiterten Modus im Benutzerprofil aktivieren).
+1. In den Dashboard-Einstellungen unter **Ressourcen** `/stromtarif-card.js?v=0.4.0` als **JavaScript-Modul** hinzufügen (gegebenenfalls erweiterten Modus im Benutzerprofil aktivieren).
 2. Eine manuelle Karte hinzufügen:
 
 ```yaml
@@ -136,4 +136,17 @@ Optional eine **Endabrechnung** mit Rechnungsbeginn, tatsächlichem Rechnungsbet
 
 Versionen werden als benannte GitHub-Releases mit Semver-Tag und kurzen deutschen Versionshinweisen veröffentlicht. Der Release-Workflow startet nach einem Push auf `main` und veröffentlicht erst nach erfolgreichen Modell-, HA-Laufzeit- und Kartentests. Er überschreibt kein bestehendes Release.
 
-Falls HACS bisher `main` oder eine kurze Commit-ID anzeigt: Repository öffnen → Menü → **Erneut herunterladen**, Version **v0.3.0** auswählen, herunterladen und Home Assistant neu starten. Je nach HACS-Version kann die Menübezeichnung abweichen. Für die Dashboard-Karte die Ressource auf `/stromtarif-card.js?v=0.3.0` ändern und Browser aktualisieren. HACS-Installation und Darstellung in deiner eigenen Instanz wurden hier nicht getestet.
+Falls HACS bisher `main` oder eine kurze Commit-ID anzeigt: Repository öffnen → Menü → **Erneut herunterladen**, Version **v0.3.0** auswählen, herunterladen und Home Assistant neu starten. Je nach HACS-Version kann die Menübezeichnung abweichen. Für die Dashboard-Karte die Ressource auf `/stromtarif-card.js?v=0.4.0` ändern und Browser aktualisieren. HACS-Installation und Darstellung in deiner eigenen Instanz wurden hier nicht getestet.
+
+
+## Neu in 0.4.0: Verwaltungs-Panel
+
+Unter **Konfigurieren → Seitenleiste ein-/ausblenden** den optionalen Eintrag **DEr Stromtarif** aktivieren. Er ist für Administratoren sichtbar. Auch ohne Seitenleisten-Eintrag öffnet **Verwaltung öffnen** in der Karte die Oberfläche für das ausgewählte Tarifbuch.
+
+- Alle Ablesungen als Tabelle, Datum und Zählerstand einzeln korrigieren. Verbrauch, Kosten und Prognose werden neu berechnet. Widersprüchliche Änderungen werden vollständig verworfen.
+- Alle bisherigen Optionen im Panel: Tarifwechsel, historische Tarifpreise, Aktivstatus, Abschluss, Abschlagsplan, Zahlungen, Endabrechnungen, Kalender, To-do-Liste, Ableseintervall und automatische Zählerquelle.
+- Effektiver Strompreis je Tarif inklusive anteiliger Grundgebühr; zusätzlicher Sensor und Anzeige in der Karte. Ohne Verbrauch bleibt der Preis unbekannt.
+- Verbrauch nach **Monat, Quartal oder Jahr**, für alle Tarife oder einen einzelnen Tarif. Zeitanteilig verteilte Werte als Schätzung, unvollständige Perioden als Teilperiode gekennzeichnet.
+- Datenrevision verhindert, dass eine alte Tabellenansicht inzwischen geänderte Zählerstände überschreibt.
+
+Bedienung und Grenzen: [PANEL.md](PANEL.md). Nach dem Update Home Assistant neu starten. Die Ressource der Dashboard-Karte auf `/stromtarif-card.js?v=0.4.0` ändern; das Panel wird automatisch registriert.

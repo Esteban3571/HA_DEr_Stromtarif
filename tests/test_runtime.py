@@ -30,7 +30,7 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
     self.assertEqual(hass.states.get('sensor.runtime_zahlerstand').state,'1000.0')
     self.assertEqual(hass.states.get('binary_sensor.runtime_ablesung_fallig').state,'on')
     self.assertIsNotNone(ledger.data['notified_due'])
-    for step in ['reading','tariff','interval','undo','finances','payment','undo_payment','source','reminders','status','close','planned_payment']:
+    for step in ['reading','tariff','interval','undo','finances','payment','undo_payment','source','reminders','status','close','planned_payment','panel']:
      menu=await hass.config_entries.options.async_init(entry.entry_id)
      form=await hass.config_entries.options.async_configure(menu['flow_id'],user_input={'next_step_id':step})
      self.assertEqual(form['type'],'form',step);self.assertEqual(form['step_id'],step)
@@ -137,6 +137,57 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
     setup=hass.data['stromtarif'][created['result'].entry_id]
     self.assertIsNone(setup.reminders.error);self.assertEqual(setup.data['reminders']['calendar'],'calendar.tarife')
     self.assertEqual(len(todo.todo_items),2)
+    # Panel writes are admin-only, atomic and reject outdated revisions.
+    from custom_components.stromtarif.frontend import ws_update,ws_periods
+    from homeassistant.components.frontend import DATA_PANELS
+    async def panel_write(operation,values,revision=None):
+     conn=SimpleNamespace(user=SimpleNamespace(is_admin=True),send_result=Mock(),send_error=Mock(),async_handle_exception=Mock())
+     ws_update(hass,conn,{'id':20,'type':'stromtarif/update','entry_id':entry.entry_id,'revision':ledger.data['revision'] if revision is None else revision,'operation':operation,'values':values})
+     await hass.async_block_till_done(wait_background_tasks=True)
+     conn.async_handle_exception.assert_not_called()
+     return conn
+    current=ledger.data['revision']
+    edited=await panel_write('reading_edit',{'index':0,'date':yesterday.isoformat(),'reading':999})
+    self.assertTrue(edited.send_result.called);self.assertEqual(ledger.data['tariffs'][0]['reading'],'999')
+    rejected=await panel_write('reading_edit',{'index':0,'date':yesterday.isoformat(),'reading':995},current)
+    self.assertEqual(rejected.send_error.call_args.args[1],'stale_data');self.assertEqual(ledger.data['readings'][0]['value'],'999')
+    previous=deepcopy(ledger.data)
+    rejected=await panel_write('reading_edit',{'index':0,'date':yesterday.isoformat(),'reading':2000})
+    self.assertEqual(rejected.send_error.call_args.args[1],'reading_decreased');self.assertEqual(ledger.data,previous)
+    denied=SimpleNamespace(user=SimpleNamespace(is_admin=False),send_result=Mock(),send_error=Mock())
+    with self.assertRaises(Unauthorized):ws_update(hass,denied,{'id':2,'entry_id':entry.entry_id,'revision':0,'operation':'panel','values':{'show_panel':True}})
+    self.assertIsNone(hass.data[DATA_PANELS]['stromtarif'].sidebar_title)
+    enabled=await panel_write('panel',{'show_panel':True});self.assertTrue(enabled.send_result.called)
+    self.assertEqual(hass.data[DATA_PANELS]['stromtarif'].sidebar_title,'DEr Stromtarif');self.assertTrue(hass.data[DATA_PANELS]['stromtarif'].require_admin)
+    self.assertEqual((await submit('panel',{'show_panel':False}))['type'],'create_entry')
+    self.assertIsNone(hass.data[DATA_PANELS]['stromtarif'].sidebar_title)
+    stats=SimpleNamespace(user=SimpleNamespace(is_admin=True),send_result=Mock(),send_error=Mock())
+    ws_periods(hass,stats,{'id':30,'entry_id':entry.entry_id,'unit':'month'});self.assertTrue(stats.send_result.called)
+    changed=await panel_write('tariff_edit',{'index':0,'name':'Korrigiert','price':.4,'monthly_fee':12})
+    self.assertTrue(changed.send_result.called);self.assertEqual(ledger.data['bills'][0]['tariff'],'Korrigiert')
+    # Every options-menu operation also has a validated panel equivalent.
+    from custom_components.stromtarif.panel_api import apply
+    from custom_components.stromtarif import model as panel_model
+    start_day=(today-timedelta(days=30)).isoformat()
+    test_data=panel_model.migrate(panel_model.initial({'name':'API','date':start_day,'reading':1000,'price':.3,'monthly_fee':12,'interval':90},today))
+    apply(hass,test_data,'reading_add',{'date':(today-timedelta(days=20)).isoformat(),'reading':1100},today)
+    apply(hass,test_data,'interval',{'interval':30},today);self.assertEqual(test_data['interval'],30)
+    apply(hass,test_data,'finances',{'billing_start':start_day,'billing_end':end.isoformat(),'monthly_installment':90,'payment_day':31,'schedule_mode':'custom'},today)
+    apply(hass,test_data,'planned_payment',{'key':today.isoformat(),'date':today.isoformat(),'amount':85,'remove':False},today)
+    self.assertEqual(panel_model.payment_schedule(test_data)[0]['amount'],'85')
+    apply(hass,test_data,'payment_add',{'date':today.isoformat(),'amount':90},today)
+    apply(hass,test_data,'payment_edit',{'index':0,'date':today.isoformat(),'amount':95},today)
+    self.assertEqual(test_data['payments'][0]['amount'],'95')
+    apply(hass,test_data,'payment_delete',{'index':0},today);self.assertEqual(test_data['payments'],[])
+    apply(hass,test_data,'source',{'enabled':True,'entity_id':'sensor.test_meter'},today);self.assertIsNotNone(test_data['source'])
+    apply(hass,test_data,'source',{'enabled':False},today);self.assertIsNone(test_data['source'])
+    apply(hass,test_data,'reminders',{'calendar':'calendar.tarife','todo':'todo.ablesungen','readings':True,'payments':False},today)
+    self.assertEqual(test_data['reminders']['calendar'],'calendar.tarife')
+    apply(hass,test_data,'tariff_add',{'name':'B','date':(today-timedelta(days=10)).isoformat(),'reading':1200,'price':.4,'monthly_fee':10},today)
+    apply(hass,test_data,'close',{'date':today.isoformat(),'reading':1300,'final_bill':True,'bill_start':(today-timedelta(days=10)).isoformat(),'invoice_total':40,'invoice_balance':10,'balance_kind':'refund'},today)
+    apply(hass,test_data,'bill_edit',{'index':0,'start':(today-timedelta(days=10)).isoformat(),'end':today.isoformat(),'invoice_total':45,'invoice_balance':5,'balance_kind':'payment'},today)
+    self.assertEqual(test_data['bills'][0]['invoice_total'],'45');self.assertEqual(test_data['bills'][0]['balance'],'5')
+    apply(hass,test_data,'bill_delete',{'index':0},today);self.assertEqual(test_data['bills'],[])
     saved=deepcopy(ledger.data)
     self.assertTrue(await hass.config_entries.async_reload(entry.entry_id));await hass.async_block_till_done()
     self.assertEqual(hass.data['stromtarif'][entry.entry_id].data,saved)

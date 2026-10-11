@@ -35,12 +35,15 @@ class Ledger:
         migrate(self.data)
         await self.store.async_save(self.data)
 
-    async def mutate(self, operation):
+    async def mutate(self, operation, *, expected_revision=None):
         async with self.lock:
+            if expected_revision is not None and expected_revision != self.data["revision"]:
+                raise ValueError("stale_data")
             updated = deepcopy(self.data)
             operation(updated)
             if updated == self.data:
                 return
+            updated["revision"] = self.data["revision"] + 1
             await self.store.async_save(updated)
             self.data = updated
         if not active(self.data) or self.data.get("notified_due") is None or due(self.data)>dt_util.now().date():
@@ -109,6 +112,8 @@ async def async_setup_entry(hass, entry):
     from .frontend import async_setup_frontend
     await async_setup_frontend(hass)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = ledger
+    from .frontend import async_update_panel
+    await async_update_panel(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(async_track_time_interval(hass, ledger.tick, timedelta(hours=1)))
     ledger.bind_source()
@@ -120,6 +125,8 @@ async def async_setup_entry(hass, entry):
 async def async_unload_entry(hass, entry):
     if await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.data[DOMAIN].pop(entry.entry_id)
+        from .frontend import async_update_panel
+        await async_update_panel(hass)
         return True
     return False
 

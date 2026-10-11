@@ -111,6 +111,8 @@ def due(ledger):
 
 def migrate(data):
     """Add fields without discarding old tariff or reading data."""
+    data.setdefault("revision", 0)
+    data.setdefault("show_panel", False)
     data.setdefault("payments", [])
     data.setdefault("monthly_installment", "0")
     data.setdefault("payment_day", 1)
@@ -208,7 +210,7 @@ def configure_finances(data, start, end, installment, payment_day):
     if end <= start or start.isoformat() < data["readings"][0]["date"]:
         raise ValueError("billing_dates")
     day = int(payment_day)
-    if not 0 <= day <= 31:
+    if day != float(payment_day) or not 0 <= day <= 31:
         raise ValueError("invalid_input")
     data.update(billing_start=start.isoformat(), billing_end=end.isoformat(),
                 monthly_installment=number(installment), payment_day=day)
@@ -350,3 +352,101 @@ def intervals(data):
         base=fee(tariff["monthly_fee"], a, max(a,stop))
         result.append({"from":before["date"],"to":after["date"],"tariff":tariff["name"],"consumption":float(used),"energy_cost":float(energy),"base_cost":float(base),"total_cost":float(energy+base)})
     return result
+
+
+def validate_history(data, today):
+    """Ensure edited records still form ordered meter and tariff boundaries."""
+    readings = data["readings"]
+    if not readings:
+        raise ValueError("cannot_undo")
+    for i, reading in enumerate(readings):
+        valid_date(reading["date"], today)
+        number(reading["value"])
+        if i and reading["date"] <= readings[i-1]["date"]:
+            raise ValueError("date_order")
+        if i and Decimal(reading["value"]) < Decimal(readings[i-1]["value"]):
+            raise ValueError("reading_decreased")
+    by_date = {r["date"]: r for r in readings}
+    for i, tariff in enumerate(data["tariffs"]):
+        if i and tariff["start"] <= data["tariffs"][i-1]["start"]:
+            raise ValueError("date_order")
+        if tariff["start"] not in by_date or Decimal(tariff["reading"]) != Decimal(by_date[tariff["start"]]["value"]):
+            raise ValueError("boundary_mismatch")
+        if tariff.get("end"):
+            if tariff["end"] < tariff["start"] or tariff["end"] not in by_date:
+                raise ValueError("boundary_mismatch")
+            if i+1 < len(data["tariffs"]) and tariff["end"] > data["tariffs"][i+1]["start"]:
+                raise ValueError("date_order")
+    if data["billing_start"] < readings[0]["date"] or data["billing_end"] <= data["billing_start"]:
+        raise ValueError("billing_dates")
+
+
+def edit_reading(data, index, when, value, today):
+    old = data["readings"][index]
+    old_date = old["date"]
+    when = valid_date(when, today)
+    value = number(value)
+    # Invoice dates are supplier facts. Correct the bill explicitly first.
+    if when != old_date and any(old_date in {bill["start"], bill["end"]} for bill in data["bills"]):
+        raise ValueError("invoice_boundary")
+    old.update(date=when, value=value)
+    if old["kind"] == "automatic":
+        old["kind"] = "manual"
+    for tariff in data["tariffs"]:
+        if tariff["start"] == old_date:
+            tariff.update(start=when, reading=value)
+        if tariff.get("end") == old_date:
+            tariff.update(end=when, end_reading=value)
+    for bill in data["bills"]:
+        if bill["end"] == old_date:
+            bill["reading"] = value
+    if index == 0 and data["billing_start"] == old_date:
+        data["billing_start"] = when
+    validate_history(data, today)
+    data["notified_due"] = None
+
+
+def delete_reading(data, index, today):
+    reading = data["readings"][index]
+    if index == 0 or any(reading["date"] in {t["start"], t.get("end")} for t in data["tariffs"]):
+        raise ValueError("cannot_undo")
+    data["readings"].pop(index)
+    validate_history(data, today)
+    data["notified_due"] = None
+
+
+def tariff_summary(data, index):
+    tariff = data["tariffs"][index]
+    start = date.fromisoformat(tariff["start"])
+    end = min(date.fromisoformat(tariff.get("end", data["readings"][-1]["date"])), date.fromisoformat(data["readings"][-1]["date"]))
+    consumption, cost, estimated = period_cost(data, start, end)
+    return {"index": index, "name": tariff["name"], "start": start.isoformat(), "end": end.isoformat(),
+            "consumption": consumption, "cost": cost, "estimated": estimated,
+            "effective_price": cost / consumption if consumption > 0 else None}
+
+
+def consumption_periods(data, unit="month", tariff_index=None):
+    if unit not in {"month", "quarter", "year"}:
+        raise ValueError("invalid_input")
+    begin = date.fromisoformat(data["readings"][0]["date"])
+    end = date.fromisoformat(data["readings"][-1]["date"])
+    if tariff_index is not None:
+        tariff = data["tariffs"][tariff_index]
+        begin = date.fromisoformat(tariff["start"])
+        end = min(end, date.fromisoformat(tariff.get("end", end.isoformat())))
+    months = {"month": 1, "quarter": 3, "year": 12}[unit]
+    cursor = begin.replace(month=((begin.month-1)//months)*months+1, day=1)
+    rows = []
+    while cursor < end:
+        absolute = cursor.year*12 + cursor.month-1 + months
+        stop = date(absolute//12, absolute%12+1, 1)
+        left, right = max(begin,cursor), min(end,stop)
+        consumption, cost, estimated = period_cost(data,left,right)
+        # Missing unobserved days are not extrapolated into period totals.
+        partial = left != cursor or right != stop
+        label = str(cursor.year) if unit == "year" else f"{cursor.year} Q{(cursor.month-1)//3+1}" if unit == "quarter" else cursor.strftime("%Y-%m")
+        rows.append({"label": label, "start": left.isoformat(), "end": right.isoformat(),
+            "consumption": consumption, "cost": cost, "estimated": estimated, "partial": partial,
+            "effective_price": cost/consumption if consumption > 0 else None})
+        cursor = stop
+    return rows

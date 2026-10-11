@@ -1,17 +1,17 @@
-# Testbericht – DEr Stromtarif 0.3.0
+# Testbericht – DEr Stromtarif 0.4.0
 
 Geprüft am 11. Oktober 2026 in einer separaten lokalen Testkopie, vor dem Hochladen auf GitHub.
 
 ## Ergebnis
 
-- 29 Python-Tests bestanden: 28 Modelltests und ein durchgehender Laufzeittest mit zahlreichen Prüfungen.
+- 38 Python-Tests bestanden: 37 Modelltests und ein durchgehender Laufzeittest mit zahlreichen Prüfungen.
 - JavaScript-Syntaxprüfung bestanden.
 - Chromium-Browsertest der Dashboard-Karte bestanden: Anzeige, Verbrauchs-/Kostentabelle, sichere Textdarstellung und tatsächlicher CSV-Download.
 - JSON-Dateien und Python-Dateien geprüft.
 
 ## Home Assistant
 
-Testumgebung: **Home Assistant Core 2026.2.3**, CPython 3.13.16. Der vollständige Einrichtungsdialog wurde über den HA-Flow-Manager geöffnet und ein Eintrag erstellt. Alle Sensoren, das Optionsmenü mit zwölf Dialogen, Zahlungserfassung, automatische Zählerwerte, Ausfallanzeige, dauerhafte Sperre nach Zählerreset und Entladen/Neuladen mit Erhalt der Daten wurden geprüft. Die Tests verwenden echte Home-Assistant-Komponenten. Ausschließlich die lokale Netzwerkadress-Ermittlung ist im Laufzeittest auf Loopback gesetzt, da die Testumgebung keine Netzwerkadapter-Ermittlung erlaubt.
+Testumgebung: **Home Assistant Core 2026.2.3**, CPython 3.13.16. Der vollständige Einrichtungsdialog wurde über den HA-Flow-Manager geöffnet und ein Eintrag erstellt. Alle Sensoren, das Optionsmenü mit dreizehn Dialogen, Zahlungserfassung, automatische Zählerwerte, Ausfallanzeige, dauerhafte Sperre nach Zählerreset und Entladen/Neuladen mit Erhalt der Daten wurden geprüft. Die Tests verwenden echte Home-Assistant-Komponenten. Ausschließlich die lokale Netzwerkadress-Ermittlung ist im Laufzeittest auf Loopback gesetzt, da die Testumgebung keine Netzwerkadapter-Ermittlung erlaubt.
 
 Die ungültige Zahlenfeld-Schrittweite der alten Version ließ sich mit HA Core reproduzieren; `step: any` behebt die Schema-Validierung und erlaubt auch vier oder mehr Nachkommastellen.
 
@@ -49,3 +49,12 @@ npx playwright install chromium
 node --check custom_components/stromtarif/www/stromtarif-card.js
 node tests/test_card.cjs
 ```
+
+
+## Verwaltungs-Panel 0.4.0
+
+Zusätzliche Modellprüfungen für Ablesekorrekturen, synchronisierte Tarifgrenzen, geschützte Rechnungsgrenzen, Löschung normaler Ablesungen, Effektivpreis bei Nullverbrauch, Periodensummen, Tarifauswahl und Schaltjahr.
+
+Im tatsächlichen HA-Core getestet: Panel registrieren, Seitentitel ein-/ausblenden, Optionsdialog, Administratorprüfung, Schreibbefehle mit Datenrevision, atomare Ablehnung ungültiger Werte und Äquivalente aller vorhandenen Optionsfunktionen. Die Backend-Schreibtests verwenden den tatsächlichen WebSocket-Handler und die tatsächliche Speicherung.
+
+Chromium prüft Paneldarstellung, Effektivpreis, Monats-/Quartals-/Jahresauswahl, einzelne Tabellenänderung, Fehlerdialog mit erhaltenen Eingaben, Seitenleistenoption, Zielauswahl, CSV-Download, sichere Textdarstellung und schmale Ansicht. Die WebSocket-Antworten dieses Browsertests sind simuliert. Ein durchgehender Browsertest innerhalb der vollständigen HA-Anwendungsoberfläche ist nicht durchgeführt worden.

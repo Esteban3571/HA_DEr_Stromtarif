@@ -87,7 +87,7 @@ class StromtarifOptionsFlow(config_entries.OptionsFlow):
         return self.hass.data[DOMAIN][self.config_entry.entry_id]
 
     async def async_step_init(self, user_input=None):
-        return self.async_show_menu(step_id="init", menu_options=["reading", "tariff", "interval", "undo", "finances", "payment", "undo_payment", "source", "reminders", "status", "close", "planned_payment"])
+        return self.async_show_menu(step_id="init", menu_options=["reading", "tariff", "interval", "undo", "finances", "payment", "undo_payment", "source", "reminders", "status", "close", "planned_payment", "panel"])
 
     async def commit(self, operation, step, schema, user_input):
         errors = {}
@@ -205,3 +205,12 @@ class StromtarifOptionsFlow(config_entries.OptionsFlow):
             vol.Required("amount", default=float(self.ledger.data["monthly_installment"])): numeric("EUR"),
             vol.Required("remove", default=False): selector.BooleanSelector()}
         return await self.commit(lambda data: edit_planned_payment(data, user_input["key"], user_input["date"], user_input["amount"], user_input["remove"]), "planned_payment", vol.Schema(fields), user_input)
+
+
+    async def async_step_panel(self, user_input=None):
+        result = await self.commit(lambda data: data.update(show_panel=user_input["show_panel"]), "panel",
+            vol.Schema({vol.Required("show_panel",default=self.ledger.data["show_panel"]): selector.BooleanSelector()}),user_input)
+        if result["type"] == "create_entry":
+            from .frontend import async_update_panel
+            await async_update_panel(self.hass)
+        return result

@@ -47,7 +47,8 @@
           "reminders": "Kalender und To-do-Liste ändern",
           "status": "Aktuellen Tarif inaktiv setzen",
           "close": "Tarif abschließen",
-          "planned_payment": "Einzelnen Abschlag planen, verschieben oder entfernen"
+          "planned_payment": "Einzelnen Abschlag planen, verschieben oder entfernen",
+          "panel": "Seitenleiste ein-/ausblenden"
         }
       },
       "reading": {
@@ -162,6 +163,13 @@
           "date": "Gewünschtes Zahlungsdatum",
           "amount": "Geplanter Betrag (EUR)",
           "remove": "Diesen geplanten Termin entfernen"
+        }
+      },
+      "panel": {
+        "title": "Seitenleisten-Eintrag",
+        "description": "Ein gemeinsames Verwaltungs-Panel erscheint, sobald es für mindestens ein Tarifbuch aktiviert ist. Ohne Seitenleisten-Eintrag kann die Oberfläche über die Dashboard-Karte geöffnet werden. Nur Administratoren dürfen Daten bearbeiten.",
+        "data": {
+          "show_panel": "DEr Stromtarif in der Seitenleiste anzeigen"
         }
       }
     },

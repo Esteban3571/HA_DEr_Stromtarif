@@ -3,7 +3,7 @@ from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
 from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .entity import LedgerEntity
-from .model import totals, due, fee, finances, active
+from .model import totals, due, fee, finances, active, tariff_summary
 
 SENSORS = [
     ("status", "Tarifstatus", None),
@@ -20,6 +20,7 @@ SENSORS = [
     ("base_cost", "Grundgebühr erfasst", "EUR"),
     ("total_cost", "Gesamtkosten erfasst", "EUR"),
     ("price", "Arbeitspreis", "EUR/kWh"),
+    ("effective_price", "Effektiver Strompreis erfasst", "EUR/kWh"),
     ("monthly_fee", "Monatliche Grundgebühr", "EUR"),
     ("pending_fee", "Grundgebühr seit letzter Ablesung", "EUR"),
     ("last_reading", "Letzte Ablesung", None),
@@ -55,6 +56,9 @@ class LedgerSensor(LedgerEntity, SensorEntity):
         if self.key in {"period_cost", "paid", "planned", "balance", "forecast_cost", "forecast_balance"}:
             value=finances(data)[self.key]
             return None if value is None else round(value,2)
+        if self.key == "effective_price":
+            value = tariff_summary(data,len(data["tariffs"])-1)["effective_price"]
+            return None if value is None else round(value,6)
         if self.key == "reading":
             return float(data["readings"][-1]["value"])
         if self.key in {"price", "monthly_fee"}:
