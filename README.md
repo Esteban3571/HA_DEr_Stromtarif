@@ -6,6 +6,16 @@ Verwaltet feste Stromtarife, manuelle Zählerstände, Tarifwechsel und Ableseeri
 
 ## Installation mit HACS
 
+[![In HACS installieren](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Esteban3571&repository=HA_DEr_Stromtarif&category=integration)
+
+**1. Installieren:** Der Button öffnet das Repository in HACS deiner Home-Assistant-Installation. HACS muss bereits eingerichtet sein. Repository bei Bedarf hinzufügen, herunterladen und Home Assistant neu starten.
+
+[![In Home Assistant einrichten](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=stromtarif)
+
+**2. Einrichten:** Nach dem Download und Neustart öffnet dieser Button die Einrichtung von **DEr Stromtarif**. Beim ersten Aufruf gegebenenfalls die Adresse deiner Home-Assistant-Installation in My Home Assistant hinterlegen.
+
+### Alternativ manuell
+
 1. HACS öffnen → Menü → **Benutzerdefinierte Repositories**.
 2. `https://github.com/Esteban3571/HA_DEr_Stromtarif` als Kategorie **Integration** hinzufügen.
 3. **DEr Stromtarif** herunterladen und Home Assistant neu starten.
@@ -55,3 +65,4 @@ python -m compileall -q custom_components
 Fehler und Erweiterungswünsche: https://github.com/Esteban3571/HA_DEr_Stromtarif/issues
 
 Lizenz: MIT.
+
